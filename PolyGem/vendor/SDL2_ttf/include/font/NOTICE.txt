@@ -1,0 +1,1 @@
+This folder is added for the purpose of the PolyGem project and the files it may contain is not packaged or distributed by SDL_ttf software. Usage of the files from this folder may cause copyright infringements and claims, and contents inside this folder should be used under the precations of the person using it. The contents here are subject to be changed.
