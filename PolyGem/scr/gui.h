@@ -10,12 +10,15 @@ namespace gui {
 #define GUI_HORIZONTAL 2u
 
 	inline SDL_Color DefaultColorBG = { 36, 36, 36, SDL_ALPHA_OPAQUE };
+	inline SDL_Color DefaultGUIColor = { 96, 96, 96, SDL_ALPHA_OPAQUE };
 	inline SDL_Color DefaultTextColor = { 180, 180, 180, SDL_ALPHA_OPAQUE };
 	inline SDL_Color DefaultPrimaryButtonColor = { 36, 180, 112, SDL_ALPHA_OPAQUE };
 	inline SDL_Color DefaultDestructiveButtonColor = { 180, 64, 24, SDL_ALPHA_OPAQUE };
 
 	struct Vector2D {
 		int x, y;
+
+		Vector2D(int xX = 0, int yY = 0) : x(xX), y(yY) { }
 	};
 
 	enum class KeyButton {
@@ -94,7 +97,7 @@ namespace gui {
 		SDL_Rect GetRect() { return m_Rect; }
 		SDL_Texture** GetTextTexture() { return &m_TextTexture; }
 		void updatePosition(Vector2D offset);
-		void Render(SDL_Renderer* renderer, Vector2D offset);
+		void Render(SDL_Renderer* renderer);
 
 	private:
 		std::string m_Text;
@@ -108,7 +111,7 @@ namespace gui {
 	class Button {
 	public:
 		Button() { }
-		Button(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG = DefaultPrimaryButtonColor, SDL_Color labelColor = DefaultTextColor, SDL_Color colorBG = DefaultColorBG);
+		Button(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG = DefaultPrimaryButtonColor, SDL_Color labelColor = DefaultTextColor);
 		Button(const Button& other);
 		Button(Button&& other) noexcept;
 		Button& operator=(const Button& other);
@@ -116,18 +119,18 @@ namespace gui {
 
 		void SetState() { m_State = !m_State; }
 		bool GetState() { return m_State; }
+		bool& GetHovered() { return m_IsHovered; }
 		SDL_Rect GetRect() { return m_Rect; }
 		Label* GetLabel() { return &m_Label; }
 		SDL_Color GetColorFG() { return m_ColorFG; }
-		SDL_Color GetColorBG() { return m_ColorBG; }
-		void Render(SDL_Renderer* renderer, Vector2D offset);
+		void Render(SDL_Renderer* renderer);
 
 	private:
+		bool m_IsHovered = false;
 		bool m_State = false;
 		Label m_Label;
 		SDL_Rect m_Rect;
 		SDL_Color m_ColorFG;
-		SDL_Color m_ColorBG;
 	};
 
 	class Slider {
@@ -143,7 +146,7 @@ namespace gui {
 		SDL_Color GetColorFG() { return m_ColorFG; }
 		SDL_Rect GetRect() { return m_Rect; }
 		void SetValue(Vector2D mousePos, Vector2D offset);
-		void Render(SDL_Renderer* renderer, Vector2D offset);
+		void Render(SDL_Renderer* renderer);
 
 	private:
 		Label m_Label;
@@ -152,6 +155,8 @@ namespace gui {
 		float m_Value = 0.0;
 		float m_MaxVal;
 		uint8_t m_Orientation;
+		bool m_IsHovered = false;
+		bool m_State = false;
 	};
 
 	class RadioButton {
@@ -164,15 +169,17 @@ namespace gui {
 		RadioButton& operator=(RadioButton&& other) noexcept;
 
 		SDL_Color GetColorFG() { return m_ColorFG; }
+		int8_t& GetHovered() { return m_IsHovered; }
 		void SetState(uint8_t button) { m_SetButton = button; }
 		container::ListIterator<container::List<Label>> GetLabelIterator() { return m_Labels.Begin(); }
 		container::List<Label>* GetLabelList() { return &m_Labels; }
 		container::ListIterator<container::List<SDL_Rect>> GetRectIterator() { return m_Rects.Begin(); }
 		container::List<SDL_Rect>* GetRectList() { return &m_Rects; }
-		void Render(SDL_Renderer* renderer, Vector2D offset);
+		void Render(SDL_Renderer* renderer);
 
 	private:
 		SDL_Color m_ColorFG;
+		int8_t m_IsHovered = -1;
 		uint8_t m_SetButton = 0;
 		container::List<Label> m_Labels;
 		container::List<SDL_Rect> m_Rects;
@@ -187,38 +194,44 @@ namespace gui {
 		CheckButton& operator=(const CheckButton& other);
 		CheckButton& operator=(CheckButton&& other) noexcept;
 
+		bool& GetHovered() { return m_IsHovered; }
 		void SetState() { m_State = !m_State; }
 		bool GetState() { return m_State; }
 		SDL_Color GetColorFG() { return m_ColorFG; }
 		SDL_Rect GetRect() { return m_Rect; }
 		Label* GetLabel() { return &m_Label; }
-		void Render(SDL_Renderer* renderer, Vector2D offset);
+		void Render(SDL_Renderer* renderer);
 
 	private:
 		SDL_Color m_ColorFG;
 		SDL_Rect m_Rect;
 		Label m_Label;
+		bool m_IsHovered = false;
 		bool m_State = false;
 	};
 
 	class Layer {
 	public:
-		Layer(Vector2D position) : m_Position(position) { }
+		Layer(SDL_Renderer* renderer, SDL_Rect rect, SDL_Color colorBG) : m_Rect(rect), m_ColorBG(colorBG) {
+			m_LayerTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, rect.w, rect.h);
+		}
 
-		void AddButton(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG = DefaultPrimaryButtonColor, SDL_Color labelColor = DefaultTextColor, SDL_Color colorBG = DefaultColorBG);
-		void AddSlider(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, float maxVal, uint8_t orientation, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor, SDL_Color colorBG = DefaultColorBG);
-		void AddRadioButton(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor, SDL_Color colorBG = DefaultColorBG);
-		void AddCheckButton(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor, SDL_Color colorBG = DefaultColorBG);
+		void AddButton(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG = DefaultPrimaryButtonColor, SDL_Color labelColor = DefaultTextColor);
+		void AddSlider(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, float maxVal, uint8_t orientation, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor);
+		void AddRadioButton(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor);
+		void AddCheckButton(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor);
 
-		Vector2D GetPosition() { return m_Position; }
+		Vector2D GetPosition() { return { m_Rect.x, m_Rect.y }; }
 		container::ListIterator<container::List<Button>> GetButtonIterator() { return m_Buttons.Begin(); }
 		container::ListIterator<container::List<Slider>> GetSliderIterator() { return m_Sliders.Begin(); }
 		container::ListIterator<container::List<RadioButton>> GetRadioButtonIterator() { return m_RadioButtons.Begin(); }
 		container::ListIterator<container::List<CheckButton>> GetCheckButtonIterator() { return m_CheckButtons.Begin(); }
-		void Render(SDL_Renderer* renderer, Vector2D offset);
+		void Render(SDL_Renderer* renderer);
 
 	private:
-		Vector2D m_Position;
+		SDL_Rect m_Rect;
+		SDL_Color m_ColorBG;
+		SDL_Texture* m_LayerTexture;
 		container::List<Button> m_Buttons = container::List<Button>(2);
 		container::List<Slider> m_Sliders = container::List<Slider>(2);
 		container::List<RadioButton> m_RadioButtons = container::List<RadioButton>(2);

@@ -15,6 +15,7 @@
     <ClInclude Include="scr\container.h" />
     <ClInclude Include="scr\core.h" />
     <ClInclude Include="scr\core_functions.h" />
+    <ClInclude Include="scr\core_scene.h" />
     <ClInclude Include="scr\gui.h" />
   </ItemGroup>
   <ItemGroup>

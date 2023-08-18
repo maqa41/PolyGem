@@ -2,8 +2,6 @@
 #include <math.h>
 #include <string>
 
-#define M_PI 3.14159265358979323846
-
 static SDL_Color s_GetPixelColor(const SDL_Surface* surface, const int X, const int Y) {
 	const uint8_t Bpp = surface->format->BytesPerPixel;
 	uint8_t* pixel = (uint8_t*)surface->pixels + Y * surface->pitch + X * Bpp;

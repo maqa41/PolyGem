@@ -5,6 +5,7 @@
 
 #include "benchmark.h"
 #include "core.h"
+#include "core_scene.h"
 #include "gui.h"
 #include "core_functions.h"
 
@@ -46,32 +47,25 @@ int main() {
 	}
 	
 	gui::InitializeGUIStatics(renderer);
-	//gui::Label testLabel(renderer, {100, 100, 0, 0}, "Hello, Label!", 20, {255, 255, 0 , 0}, {36, 36, 36, SDL_ALPHA_OPAQUE});
-	//gui::Button testButton(renderer, { 250, 200, 0, 0 }, "Hello, Button", 20);
-	//gui::CheckButton testCheck(renderer, { 400, 200, 0, 0 }, "Button? Duh?!", 20, { 150, 230, 90 });
-	//gui::RadioButton testRadio(renderer, { 400, 250, 0, 0 }, { "radio1", "radio2", "radio3", "Radio, Duh?!" }, 20, gui::DefaultPrimaryButtonColor);
-	gui::Layer testLayer({ 0, 0 });
-	testLayer.AddButton(renderer, { 250, 200, 0, 0 }, "Hello, Button", 20);
-	testLayer.AddSlider(renderer, { 100, 400, 0, 0 }, "GOD", 20, 150, GUI_HORIZONTAL, gui::DefaultDestructiveButtonColor);
-	testLayer.AddSlider(renderer, { 300, 400, 0, 0 }, "ZEUS", 20, 150, GUI_VERTICAL, gui::DefaultDestructiveButtonColor);
-	testLayer.AddCheckButton(renderer, { 400, 200, 0, 0 }, "Button? Duh?!", 20, gui::DefaultPrimaryButtonColor);
-	testLayer.AddCheckButton(renderer, { 400, 240, 0, 0 }, "Button? Duh?!", 20, gui::DefaultPrimaryButtonColor);
-	testLayer.AddRadioButton(renderer, { 400, 280, 0, 0 }, { "radio1", "radio2", "radio3", "Radio, Duh?!" }, 20, gui::DefaultPrimaryButtonColor);
-	//testCheck.SetState();
+	gui::Layer testLayer(renderer, { 10, 10, 150, 100 }, gui::DefaultColorBG);
+	testLayer.AddCheckButton(renderer, { 10, 10, 0, 0 }, "Edge mode", 20, gui::DefaultPrimaryButtonColor);
+	gui::CheckButton* edgeButton = testLayer.GetCheckButtonIterator().operator->();
+	plg::Mesh testMesh({ plg::Vertex(200, 200), plg::Vertex(230, 200), plg::Vertex(240, 220),
+		plg::Vertex(250, 260), plg::Vertex(270, 230), plg::Vertex(200, 200), plg::Vertex(170, 170), plg::Vertex(220, 180) });
+	
 	while (!(*guiEvent.GetQuitState())) {
 
 		SDL_SetRenderDrawColor(renderer, 36, 36, 36, SDL_ALPHA_OPAQUE);
 		SDL_RenderClear(renderer);
+		
 		gui::RetriveGUIEvents(&guiEvent);
 		gui::HandleGUIEvents(&guiEvent, &testLayer);
-
-		testLayer.Render(renderer, { 0, 0 });
-		//testLabel.Render(renderer, { 20, 20 });
-		//testButton.Render(renderer, { 20, 20 });
-		//testCheck.Render(renderer, { 50, 0 });
-		//testRadio.Render(renderer, { 0, 0 });
+		testMesh.SetMode((edgeButton->GetState()) ? plg::MeshMode::PLG_EDGE : plg::MeshMode::PLG_VERTEX);
+		
+		testMesh.Render(renderer, plg::Vec2());
+		testLayer.Render(renderer);
+		
 		SDL_RenderPresent(renderer);
-
 		SDL_Delay(50);
 	}
 

@@ -320,7 +320,7 @@ namespace container {
 			//Log("List destroyed!");
 		}
 
-		T_obj& operator [](const size_t index) {
+		T_obj& operator[](const size_t index) {
 			if (index < m_Capacity && !CheckEmptySlotIndex(index)) {
 				return m_Objects[index];
 			}

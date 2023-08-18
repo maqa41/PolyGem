@@ -31,15 +31,12 @@ namespace plg {
 		}
 		Vec2 Rotate(float angle);
 		Vec2 Rotate(float angle, const Vec2& centroid);
-		void _Rotate(float angle);
-		void _Rotate(float angle, const Vec2& centroid);
+		void RotateIP(float angle);
+		void RotateIP(float angle, const Vec2& centroid);
 		Vec2 RotateByVec(const Vec2& normal) { return Vec2(x * normal.x - y * normal.y, x * normal.y + y * normal.x); }
 		Vec2 RotateByVec(const Vec2& normal, const Vec2& centroid);
-		void _RotateByVec(const Vec2& normal) {
-			x = x * normal.x - y * normal.y;
-			y = x * normal.y + y * normal.x;
-		}
-		void _RotateByVec(const Vec2& normal, const Vec2& centroid);
+		void RotateByVecIP(const Vec2& normal);
+		void RotateByVecIP(const Vec2& normal, const Vec2& centroid);
 		void operator *= (const float value) {
 			x *= value;
 			y *= value;
@@ -90,40 +87,32 @@ namespace plg {
 
 	class Vertex : public Vec2 {
 	public:
-		Vertex(float xX, float yY) : Vec2(xX, yY) {}
+		Vertex(float xX, float yY) : Vec2(xX, yY) { }
 		
-		~Vertex() {}
-
-		void IncRef() { m_RefCount++; }
-		void DecRef() { m_RefCount--; }
-
-	private:
-		size_t m_RefCount = 1;
+		~Vertex() { }
 	};
 
-	class Line {
+	class Edge {
 	public:
-		Line(Vertex* start, Vertex* end) : m_Start(start), m_End(end) {
-			m_Start->IncRef();
-			m_End->IncRef();
-		}
+		Edge(size_t start, size_t end, container::List<Vertex>* vertexMesh) : m_Start(start), m_End(end), m_VertexMesh(vertexMesh) { }
 
-		~Line() {
-			m_Start->DecRef();
-			m_End->DecRef();
-		}
+		~Edge() { }
 
-		void Rotate(float angle) { m_End->_Rotate(angle); }
-		void Rotate(Vec2 normal) {m_End->_RotateByVec(normal); }
+		void Rotate(float angle);
+		void Rotate(Vec2 normal);
 		void RotateByCenter(float angle);
 		void RotateByCenter(Vec2 normal);
 		void RotateByCentroid(float angle, Vec2 centroid);
 		void RotateByCentroid(Vec2 normal, Vec2 centroid);
 		void Move(Vec2 offset);
 		
+		Vertex GetStart() { return m_VertexMesh->operator[](m_Start); }
+		Vertex GetEnd() { return m_VertexMesh->operator[](m_End); }
+
 	private:
-		Vertex* m_Start;
-		Vertex* m_End;
+		size_t m_Start;
+		size_t m_End;
+		container::List<Vertex>* m_VertexMesh;
 	};
 	
 	class Face {
@@ -142,8 +131,8 @@ namespace plg {
 
 		void Move(Vec2 offset);
 		Vec2 GetCenter();
-		static bool CheckValidLines(std::initializer_list<Line*> lines);
-		static Face MakeFaceFromLines(std::initializer_list<Line*> lines, const container::ListIterator<container::List<Vertex>> vertex_iter);
+		static bool CheckValidLines(std::initializer_list<Edge*> lines);
+		static Face MakeFaceFromLines(std::initializer_list<Edge*> lines, const container::ListIterator<container::List<Vertex>> vertex_iter);
 
 	private:
 		container::List<size_t> m_VertexIndices;
