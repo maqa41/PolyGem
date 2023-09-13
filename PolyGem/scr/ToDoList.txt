@@ -1,0 +1,17 @@
+
+=========== gui.cpp ===========
+- Add "Face" functionality to "HandleSceneEvents()"
+- Add some visuals to "Frame"
+- Add docking and resizing functionality to "Frame" & "Layer"
+
+=========== core.cpp ===========
+- Implement "SetMesh()"
+- Implement "AddMesh()"
+- Implement "AddEdge()"
+- Implement "AddFace()"
+
+=========== Future Features ===========
+- Implement box selection feature to allow multiple vertices, edges, faces to be selected
+- Implement "Mesh" selection
+- Implement "Mesh" merge
+- Implement removal of "Vertex", "Edge" and "Face"

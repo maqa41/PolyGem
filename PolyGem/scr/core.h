@@ -23,6 +23,8 @@ namespace plg {
 			return (sqrtf(SquareMagnitude()));
 		}
 		float SquareMagnitude() const { return (x * x + y * y); }
+		float GetDistanceTo(const Vec2 other) { return sqrtf((other.x - x) * (other.x - x) + (other.y - y) *(other.y - y)); }
+		float GetDistancetoSquared(const Vec2 other) { return (other.x - x) * (other.x - x) + (other.y - y) * (other.y - y); }
 		void Normalize();
 		float NormalReturnMag();
 		void SetZero() {
@@ -83,59 +85,5 @@ namespace plg {
 		std::ostream& Print(std::ostream& stream) {
 			return stream << "Vec2< " << x << ", " << y << " >";
 		}
-	};
-
-	class Vertex : public Vec2 {
-	public:
-		Vertex(float xX, float yY) : Vec2(xX, yY) { }
-		
-		~Vertex() { }
-	};
-
-	class Edge {
-	public:
-		Edge(size_t start, size_t end, container::List<Vertex>* vertexMesh) : m_Start(start), m_End(end), m_VertexMesh(vertexMesh) { }
-
-		~Edge() { }
-
-		void Rotate(float angle);
-		void Rotate(Vec2 normal);
-		void RotateByCenter(float angle);
-		void RotateByCenter(Vec2 normal);
-		void RotateByCentroid(float angle, Vec2 centroid);
-		void RotateByCentroid(Vec2 normal, Vec2 centroid);
-		void Move(Vec2 offset);
-		
-		Vertex GetStart() { return m_VertexMesh->operator[](m_Start); }
-		Vertex GetEnd() { return m_VertexMesh->operator[](m_End); }
-
-	private:
-		size_t m_Start;
-		size_t m_End;
-		container::List<Vertex>* m_VertexMesh;
-	};
-	
-	class Face {
-	public:
-
-		Face(std::initializer_list<size_t> indices, container::List<Vertex>* vertices) {
-			m_VertexIndices = container::List<size_t>(indices);
-			m_Vertices = vertices;
-		}
-
-
-
-		~Face() {
-			m_Vertices = nullptr;
-		}
-
-		void Move(Vec2 offset);
-		Vec2 GetCenter();
-		static bool CheckValidLines(std::initializer_list<Edge*> lines);
-		static Face MakeFaceFromLines(std::initializer_list<Edge*> lines, const container::ListIterator<container::List<Vertex>> vertex_iter);
-
-	private:
-		container::List<size_t> m_VertexIndices;
-		container::List<Vertex>* m_Vertices;
 	};
 }

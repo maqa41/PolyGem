@@ -265,37 +265,34 @@ void drawArc(SDL_Renderer* renderer, int x, int y, int radius1, int radius2, dou
 	}
 }
 
-void drawCircle(SDL_Renderer* renderer, plg::Vec2 centre, int radius, SDL_Color color) {
+void drawCircle(SDL_Renderer* renderer, int x0, int y0, int radius, SDL_Color color) {
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, SDL_ALPHA_OPAQUE);
-	int x = radius - 1;
-	int y = 0;
-	int tx = 1;
-	int ty = 1;
-	int error = (tx - 2 * radius);
-	int centre_x = (int)centre.x;
-	int centre_y = (int)centre.y;
+	int f = 1 - radius;
+	int ddF_x = 0;
+	int ddF_y = -2 * radius;
+	int x = 0;
+	int y = radius;
 
-	while (x >= y) {
-		SDL_RenderDrawPoint(renderer, centre_x + x, centre_y - y);
-		SDL_RenderDrawPoint(renderer, centre_x + x, centre_y + y);
-		SDL_RenderDrawPoint(renderer, centre_x - x, centre_y - y);
-		SDL_RenderDrawPoint(renderer, centre_x - x, centre_y + y);
-		SDL_RenderDrawPoint(renderer, centre_x + y, centre_y - x);
-		SDL_RenderDrawPoint(renderer, centre_x + y, centre_y + x);
-		SDL_RenderDrawPoint(renderer, centre_x - y, centre_y - x);
-		SDL_RenderDrawPoint(renderer, centre_x - y, centre_y + x);
-
-		if (error <= 0) {
-			++y;
-			error += ty;
-			ty += 2;
+	while (x < y) {
+		if (f >= 0) {
+			y--;
+			ddF_y += 2;
+			f += ddF_y;
 		}
+		x++;
+		ddF_x += 2;
+		f += ddF_x + 1;
 
-		if (error > 0) {
-			--x;
-			tx += 2;
-			error += (tx - 2 * radius);
+		if (f >= 0) {
+			SDL_RenderDrawPoint(renderer, x0 - x, y0 + y - 1);
+			SDL_RenderDrawPoint(renderer, x0 + x - 1, y0 + y - 1);
+			SDL_RenderDrawPoint(renderer, x0 - x, y0 - y);
+			SDL_RenderDrawPoint(renderer, x0 + x - 1, y0 - y);
 		}
+		SDL_RenderDrawPoint(renderer, x0 - y, y0 + x - 1);
+		SDL_RenderDrawPoint(renderer, x0 + y - 1, y0 + x - 1);
+		SDL_RenderDrawPoint(renderer, x0 - y, y0 - x);
+		SDL_RenderDrawPoint(renderer, x0 + y - 1, y0 - x);
 	}
 }
 

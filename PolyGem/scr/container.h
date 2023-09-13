@@ -1,5 +1,6 @@
 #pragma once
 #include "benchmark.h"
+#include <bit>
 
 namespace container {
 	static uint64_t universalOne = 1;
@@ -92,13 +93,13 @@ namespace container {
 		
 		bool CheckEmptySlotIndex(size_t index) {
 			size_t emptySlotBlock = index >> 6;
-			size_t emptySlotIndex = index ^ (emptySlotBlock << 6);
+			size_t emptySlotIndex = index & 0x3F;
 			return (m_EmptySlots[emptySlotBlock] & (universalOne << emptySlotIndex)) == 0;
 		}
 
 		uint64_t GetFilledSlotIndex(size_t index) {
 			size_t emptySlotBlock = index >> 6;
-			size_t slotIndex = index ^ (emptySlotBlock << 6);
+			size_t slotIndex = index & 0x3F;
 			uint64_t filledSlotIndex = std::countr_zero((m_EmptySlots[emptySlotBlock] >> slotIndex));
 			return filledSlotIndex;
 		}
@@ -116,6 +117,21 @@ namespace container {
 				filledSlotIndex = std::countr_zero(m_EmptySlots[emptySlotBlock]);
 			}
 			obj_ptr += (emptySlotBlock << 6) + filledSlotIndex;
+		}
+
+		ListIterator(const ListIterator& other) 
+			: obj_ptr(other.obj_ptr), begin_ptr(other.begin_ptr), end_ptr(other.end_ptr),
+			m_EmptySlots(other.m_EmptySlots), m_EmptySlotCapacity(other.m_EmptySlotCapacity) { }
+
+		ListIterator& operator=(const ListIterator& other) {
+			if (this != *other) {
+				obj_ptr = other.obj_ptr;
+				begin_ptr = other.begin_ptr;
+				end_ptr = other.end_ptr;
+				m_EmptySlots = other.m_EmptySlots;
+				m_EmptySlotCapacity = other.m_EmptySlotCapacity;
+			}
+			return *this;
 		}
 
 		const PointerType GetBegin() {
@@ -145,6 +161,24 @@ namespace container {
 			return iterator;
 		}
 
+		ListIterator& operator+(int inc) {
+			ListIterator newIter = *this;
+			newIter.obj_ptr += inc;
+			size_t index = (size_t)(newIter.obj_ptr - newIter.begin_ptr);
+			size_t emptySlotBlock = index >> 6;
+			size_t slotIndex = index & 0x3F;
+			uint64_t filledSlotIndex = std::countr_zero((newIter.m_EmptySlots[emptySlotBlock] >> slotIndex));
+
+			while (emptySlotBlock < newIter.m_EmptySlotCapacity && filledSlotIndex == 64) {
+				emptySlotBlock++;
+				newIter.obj_ptr = newIter.begin_ptr + (emptySlotBlock << 6);
+				filledSlotIndex = std::countr_zero(newIter.m_EmptySlots[emptySlotBlock]);
+			}
+			newIter.obj_ptr += filledSlotIndex;
+
+			return newIter;
+		}
+
 		ReferenceType operator[](const size_t index) {
 			return *(obj_ptr + index);
 		}
@@ -161,16 +195,32 @@ namespace container {
 			return obj_ptr == other;
 		}
 
+		bool operator==(const ListIterator& other) const {
+			return obj_ptr == other.obj_ptr;
+		}
+
 		bool operator!=(const PointerType& other) const {
-			return !(*this == other);
+			return obj_ptr != other;
+		}
+
+		bool operator!=(const ListIterator& other) const {
+			return obj_ptr != other.obj_ptr;
 		}
 
 		bool operator<(const PointerType& other) const {
 			return obj_ptr < other;
 		}
 
+		bool operator<(const ListIterator& other) const {
+			return obj_ptr < other.obj_ptr;
+		}
+
 		bool operator>(const PointerType& other) const {
 			return obj_ptr > other;
+		}
+
+		bool operator>(const ListIterator& other) const {
+			return obj_ptr > other.obj_ptr;
 		}
 	};
 
@@ -215,26 +265,25 @@ namespace container {
 		}
 
 		size_t GetEmptySlotIndex() {
-			for (size_t iter = 0; iter < m_EmptySlotCapacity; iter++) {
-				uint64_t emptySlotIndex = std::countr_zero(~(m_EmptySlots[iter]));
-				if (emptySlotIndex == 64) {
-					continue;
-				}
-				m_EmptySlots[iter] ^= universalOne << emptySlotIndex;
-				return (iter << 6) + emptySlotIndex;
+			size_t emptySlotBlock = 0;
+			uint64_t emptySlotIndex = std::countr_zero(~(m_EmptySlots[emptySlotBlock]));
+			while (emptySlotBlock < m_EmptySlotCapacity && emptySlotIndex == 64) {
+				emptySlotBlock++;
+				emptySlotIndex = std::countr_zero(~(m_EmptySlots[emptySlotBlock]));
 			}
-			throw std::exception();
+			m_EmptySlots[emptySlotBlock] ^= universalOne << emptySlotIndex;
+			return (emptySlotBlock << 6) + emptySlotIndex;
 		}
 
 		bool CheckEmptySlotIndex(size_t index) const {
 			size_t emptySlotBlock = index >> 6;
-			size_t emptySlotIndex = index ^ (emptySlotBlock << 6);
+			size_t emptySlotIndex = index & 0x3F;
 			return (m_EmptySlots[emptySlotBlock] & (universalOne << emptySlotIndex)) == 0;
 		}
 
 		void SetEmptySlotIndex(size_t index) {
 			size_t emptySlotBlock = index >> 6;
-			size_t emptySlotIndex = index ^ (emptySlotBlock << 6);
+			size_t emptySlotIndex = index & 0x3F;
 			m_EmptySlots[emptySlotBlock] ^= universalOne << emptySlotIndex;
 		}
 
@@ -272,6 +321,7 @@ namespace container {
 					new(&m_Objects[index]) T_obj(other.m_Objects[index]);
 				}
 			}
+			Log("List Copied!\n");
 		}
 
 		List& operator=(const List& other) {
@@ -288,6 +338,7 @@ namespace container {
 					}
 				}
 			}
+			Log("List Copied!\n");
 			return *this;
 		}
 
@@ -297,6 +348,8 @@ namespace container {
 			m_EmptySlots = other.m_EmptySlots;
 			other.m_EmptySlots = nullptr;
 			other.m_Capacity = 0;
+			other.m_EmptySlotCapacity = 0;
+			Log("List Moved!\n");
 		}
 
 		List& operator=(List&& other) noexcept {
@@ -304,11 +357,13 @@ namespace container {
 				m_Capacity = other.m_Capacity;
 				other.m_Capacity = 0;
 				m_EmptySlotCapacity = other.m_EmptySlotCapacity;
+				other.m_EmptySlotCapacity = 0;
 				m_ObjectCount = other.m_ObjectCount;
 				m_Objects = other.m_Objects;
 				other.m_Objects = nullptr;
 				m_EmptySlots = other.m_EmptySlots;
 				other.m_EmptySlots = nullptr;
+				Log("List Moved!\n");
 			}
 			return *this;
 		}
@@ -374,15 +429,28 @@ namespace container {
 			Log(this);
 		}
 
-		size_t GetEmptySlot() {
-			for (size_t iter = 0; iter < m_EmptySlotCapacity; iter++) {
-				uint64_t emptySlotIndex = std::countr_zero(~(m_EmptySlots[iter]));
-				if (emptySlotIndex == 64) {
-					continue;
-				}
-				return (iter << 6) + emptySlotIndex;
+		void Remove(Iterator item) {
+			size_t index = (size_t)(item.operator->() - item.GetBegin());
+			if constexpr (std::is_pointer_v<T_obj>) {
+				delete m_Objects[index];
+				m_Objects[index] = nullptr;
 			}
-			throw std::exception();
+			else {
+				m_Objects[index].~T_obj();
+			}
+			SetEmptySlotIndex(index);
+			m_ObjectCount -= 1;
+			return;
+		}
+
+		size_t GetEmptySlot() {
+			size_t emptySlotBlock = 0;
+			uint64_t emptySlotIndex = std::countr_zero(~(m_EmptySlots[emptySlotBlock]));
+			while (emptySlotBlock < m_EmptySlotCapacity && emptySlotIndex == 64) {
+				emptySlotBlock++;
+				emptySlotIndex = std::countr_zero(~(m_EmptySlots[emptySlotBlock]));
+			}
+			return (emptySlotBlock << 6) + emptySlotIndex;
 		}
 
 		void Clear() {

@@ -8,6 +8,7 @@ namespace gui {
 
 #define GUI_VERTICAL 1u
 #define GUI_HORIZONTAL 2u
+#define GUI_MAXWIN { 0, 0, 640, 640 }
 
 	inline SDL_Color DefaultColorBG = { 36, 36, 36, SDL_ALPHA_OPAQUE };
 	inline SDL_Color DefaultGUIColor = { 96, 96, 96, SDL_ALPHA_OPAQUE };
@@ -55,13 +56,13 @@ namespace gui {
 		~GUIEvent() { }
 
 		bool* GetQuitState() { return &m_QuitState; }
-		void SetKeyState(size_t key) { m_KeyState[key] = !m_KeyState[key]; }
+		void SetKeyState(size_t key, bool state) { m_KeyState[key] = state; }
 		bool GetKeyState(size_t key) { return m_KeyState[key]; }
-		void SetMouseState(size_t button) { m_MouseState[button] = !m_MouseState[button]; }
+		void SetMouseState(size_t button, bool state) { m_MouseState[button] = state; }
 		bool GetMouseState(size_t button) { return m_MouseState[button]; }
 		bool* getMousePressed(size_t button) { return &m_MousePressed[button]; }
 		Vector2D* GetMousePos() { return &m_MousePos; }
-		static Vector2D GetMouseMotionPos() {
+		static Vector2D GetMouseCurrentPos() {
 			Vector2D mouseMotionPos;
 			SDL_GetMouseState(&mouseMotionPos.x, &mouseMotionPos.y);
 			return mouseMotionPos;
@@ -222,6 +223,7 @@ namespace gui {
 		void AddCheckButton(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor);
 
 		Vector2D GetPosition() { return { m_Rect.x, m_Rect.y }; }
+		SDL_Rect GetRect() { return m_Rect; }
 		container::ListIterator<container::List<Button>> GetButtonIterator() { return m_Buttons.Begin(); }
 		container::ListIterator<container::List<Slider>> GetSliderIterator() { return m_Sliders.Begin(); }
 		container::ListIterator<container::List<RadioButton>> GetRadioButtonIterator() { return m_RadioButtons.Begin(); }
@@ -236,6 +238,29 @@ namespace gui {
 		container::List<Slider> m_Sliders = container::List<Slider>(2);
 		container::List<RadioButton> m_RadioButtons = container::List<RadioButton>(2);
 		container::List<CheckButton> m_CheckButtons = container::List<CheckButton>(2);
+	};
+
+	class Frame {
+	public:
+		Frame(SDL_Renderer* renderer, SDL_Rect rect, SDL_Rect window = GUI_MAXWIN) : m_Rect(rect), m_Window(window) {
+			m_TextureLayer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, m_Window.w, m_Window.h);
+			m_MainWindow = SDL_GetRenderTarget(renderer);
+		}
+
+		~Frame() { }
+
+		SDL_Rect GetRect() { return m_Rect; }
+		void SetRenderTarget(SDL_Renderer* renderer) { SDL_SetRenderTarget(renderer, m_TextureLayer); }
+		void UnSetRenderTarget(SDL_Renderer* renderer) { SDL_SetRenderTarget(renderer, m_MainWindow); }
+		void UpdatePosition(Vector2D offset);
+		void ResizeWindow(Vector2D offset);
+		void Render(SDL_Renderer* renderer);
+
+	private:
+		SDL_Rect m_Rect;
+		SDL_Rect m_Window;
+		SDL_Texture* m_TextureLayer;
+		SDL_Texture* m_MainWindow;
 	};
 
 	class MenuBar {
@@ -257,5 +282,6 @@ namespace gui {
 
 	void InitializeGUIStatics(SDL_Renderer* renderer);
 	void HandleGUIEvents(GUIEvent* guiEvent, Layer* layer);
+	void HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw);
 	void RetriveGUIEvents(GUIEvent* guiEvent);
 }

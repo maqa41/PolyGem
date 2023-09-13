@@ -24,6 +24,9 @@
     <ClCompile Include="scr\gui.cpp" />
     <ClCompile Include="scr\main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="scr\ToDoList.txt" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

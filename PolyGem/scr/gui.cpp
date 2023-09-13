@@ -1,6 +1,8 @@
 #include "gui.h"
+#include "core_scene.h"
 #include "core_functions.h"
 #include <unordered_map>
+#include <unordered_set>
 
 #define D_PI 0.0174532925199432957692369076849
 #define COLOR_TO_UINT(color) (0xff000000 | ((uint32_t)color.r << 16) | ((uint32_t)color.g << 8) | (uint32_t)color.b)
@@ -337,20 +339,20 @@ void gui::Layer::Render(SDL_Renderer* renderer) {
 	SDL_SetRenderDrawColor(renderer, m_ColorBG.r, m_ColorBG.g, m_ColorBG.b, m_ColorBG.a);
 	SDL_RenderClear(renderer);
 	for (auto it_Button = this->GetButtonIterator(); it_Button < it_Button.end_ptr; it_Button++) {
-		it_Button->GetHovered() = s_CollideWith(GUIEvent::GetMouseMotionPos(), it_Button->GetRect(), { m_Rect.x, m_Rect.y });
+		it_Button->GetHovered() = s_CollideWith(GUIEvent::GetMouseCurrentPos(), it_Button->GetRect(), { m_Rect.x, m_Rect.y });
 		it_Button->Render(renderer);
 	}
 	for (auto it_Slider = this->GetSliderIterator(); it_Slider < it_Slider.end_ptr; it_Slider++) {
 		it_Slider->Render(renderer);
 	}
 	for (auto it_CheckButton = this->GetCheckButtonIterator(); it_CheckButton < it_CheckButton.end_ptr; it_CheckButton++) {
-		it_CheckButton->GetHovered() = s_CollideWith(GUIEvent::GetMouseMotionPos(), it_CheckButton->GetRect(), { m_Rect.x, m_Rect.y });
+		it_CheckButton->GetHovered() = s_CollideWith(GUIEvent::GetMouseCurrentPos(), it_CheckButton->GetRect(), { m_Rect.x, m_Rect.y });
 		it_CheckButton->Render(renderer);
 	}
 	for (auto it_RadioButton = this->GetRadioButtonIterator(); it_RadioButton < it_RadioButton.end_ptr; it_RadioButton++) {
 		it_RadioButton->GetHovered() = -1;
 		for (auto it_RectRB = it_RadioButton->GetRectIterator(); it_RectRB < it_RectRB.end_ptr; it_RectRB++) {
-			if (s_CollideWith(GUIEvent::GetMouseMotionPos(), *it_RectRB, { m_Rect.x, m_Rect.y })) {
+			if (s_CollideWith(GUIEvent::GetMouseCurrentPos(), *it_RectRB, { m_Rect.x, m_Rect.y })) {
 				it_RadioButton->GetHovered() = (int8_t)(it_RectRB.operator->() - it_RectRB.GetBegin());
 				break;
 			}
@@ -370,33 +372,107 @@ void gui::Layer::Render(SDL_Renderer* renderer) {
 	SDL_RenderCopy(renderer, m_LayerTexture, NULL, &m_Rect);
 }
 
+void gui::Frame::UpdatePosition(Vector2D offset) {
+	m_Rect.x += offset.x;
+	m_Rect.y += offset.y;
+}
+
+void gui::Frame::Render(SDL_Renderer* renderer) {
+	SDL_Rect rect = { 0, 0, m_Rect.w, m_Rect.h };
+	SDL_RenderCopy(renderer, m_TextureLayer, &rect, &m_Rect);
+	SetRenderTarget(renderer);
+	SDL_SetRenderDrawColor(renderer, 18, 18, 18, 255);
+	SDL_RenderClear(renderer);
+	UnSetRenderTarget(renderer);
+}
+
 void gui::HandleGUIEvents(GUIEvent* guiEvent, Layer* layer) {
+	if (!s_CollideWith(*guiEvent->GetMousePos(), layer->GetRect()))
+		return;
 	if (*guiEvent->getMousePressed(SDL_BUTTON_LEFT)) {
-		for (auto it_Button = layer->GetButtonIterator(); it_Button < it_Button.end_ptr; it_Button++) {
+		bool handled = false;
+		for (auto it_Button = layer->GetButtonIterator(); it_Button < it_Button.end_ptr && !handled; it_Button++) {
 			if (s_CollideWith(*guiEvent->GetMousePos(), it_Button->GetRect(), layer->GetPosition())) {
 				it_Button->SetState();
+				*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+				handled = true;
 			}
 		}
-		for (auto it_ChekcButton = layer->GetCheckButtonIterator(); it_ChekcButton < it_ChekcButton.end_ptr; it_ChekcButton++) {
+		for (auto it_ChekcButton = layer->GetCheckButtonIterator(); it_ChekcButton < it_ChekcButton.end_ptr && !handled; it_ChekcButton++) {
 			if (s_CollideWith(*guiEvent->GetMousePos(), it_ChekcButton->GetRect(), layer->GetPosition())) {
 				it_ChekcButton->SetState();
+				*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+				handled = true;
 			}
 		}
-		for (auto it_RadioButton = layer->GetRadioButtonIterator(); it_RadioButton < it_RadioButton.end_ptr; it_RadioButton++) {
+		for (auto it_RadioButton = layer->GetRadioButtonIterator(); it_RadioButton < it_RadioButton.end_ptr && !handled; it_RadioButton++) {
 			for (auto it_Rect = it_RadioButton->GetRectIterator(); it_Rect < it_Rect.end_ptr; it_Rect++) {
 				if (s_CollideWith(*guiEvent->GetMousePos(), *it_Rect, layer->GetPosition())) {
 					it_RadioButton->SetState((uint8_t)(it_Rect.operator->() - it_Rect.GetBegin()));
+					*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+					handled = true;
 				}
 			}
 		}
-		*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
 	}
 	if (guiEvent->GetMouseState(SDL_BUTTON_LEFT)) {
 		for (auto it_Slider = layer->GetSliderIterator(); it_Slider < it_Slider.end_ptr; it_Slider++) {
 			if (s_CollideWith(*guiEvent->GetMousePos(), it_Slider->GetRect(), layer->GetPosition())) {
-				it_Slider->SetValue(guiEvent->GetMouseMotionPos(), layer->GetPosition());
+				it_Slider->SetValue(guiEvent->GetMouseCurrentPos(), layer->GetPosition());
 			}
 		}
+	}
+}
+
+void gui::HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw) {
+	container::List<plg::Mesh>* scene = (container::List<plg::Mesh>*)sceneMeshRaw;
+	std::unordered_set<int> indexSet;
+	int meshID = plg::sceneMeshData.GetMeshID();
+	if (guiEvent->GetKeyState(SDL_SCANCODE_SPACE) && meshID != plg::sceneMeshData.NULLMESH && !plg::sceneMeshData.IsCleared()) {
+		Vector2D mousePos = guiEvent->GetMouseCurrentPos();
+		plg::Vec2 offset(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y);
+		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX) {
+			auto vertex_it = plg::sceneMeshData.GetVertexIter();
+			offset = offset - scene->operator[](meshID).GetVertexList()->operator[](*vertex_it);
+			for (; vertex_it < vertex_it.end_ptr; vertex_it++) {
+				indexSet.insert(*vertex_it);
+			}
+		}
+		else if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_EDGE) {
+			auto edge_it = plg::sceneMeshData.GetEdgeIter();
+			plg::Edge init_edge = scene->operator[](meshID).GetEdgeList()->operator[](*edge_it);
+			offset = offset - scene->operator[](meshID).GetEdgeCenter(init_edge);
+			for (; edge_it < edge_it.end_ptr; edge_it++) {
+				plg::Edge edge = scene->operator[](meshID).GetEdgeList()->operator[](*edge_it);
+				indexSet.insert(edge.m_Start);
+				indexSet.insert(edge.m_End);
+			}
+		}
+		else if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_FACE) {
+
+		}
+		for (auto index = indexSet.begin(); index != indexSet.end(); index++) {
+			scene->operator[](meshID).GetVertexList()->operator[](*index).AddVec(offset);
+		}
+	}
+	if (!s_CollideWith(*guiEvent->GetMousePos(), frame->GetRect()))
+		return;
+	if (*guiEvent->getMousePressed(SDL_BUTTON_LEFT)) {
+		if (!(guiEvent->GetKeyState(SDL_SCANCODE_LSHIFT) || guiEvent->GetKeyState(SDL_SCANCODE_RSHIFT))) {
+			plg::sceneMeshData.Clear();
+		}
+		Vector2D mousePos = *guiEvent->GetMousePos();
+		bool state = false;
+		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX) {
+			state = plg::sceneMeshData.SetVertex(&(scene->operator[](meshID)), plg::Vec2(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y));
+		}
+		else if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_EDGE) {
+			state = plg::sceneMeshData.SetEdge(&(scene->operator[](meshID)), plg::Vec2(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y));
+		}
+		if (!state && !(guiEvent->GetKeyState(SDL_SCANCODE_LSHIFT) || guiEvent->GetKeyState(SDL_SCANCODE_RSHIFT))) {
+			plg::sceneMeshData.Clear();
+		}
+		*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
 	}
 }
 
@@ -408,18 +484,19 @@ void gui::RetriveGUIEvents(GUIEvent* guiEvent) {
 			*guiEvent->GetQuitState() = true;
 			break;
 		case SDL_KEYDOWN:
-			guiEvent->SetKeyState(event.key.keysym.scancode);
+			guiEvent->SetKeyState(event.key.keysym.scancode, true);
 			break;
 		case SDL_KEYUP:
-			guiEvent->SetKeyState(event.key.keysym.scancode);
+			guiEvent->SetKeyState(event.key.keysym.scancode, false);
 			break;
 		case SDL_MOUSEBUTTONDOWN:
-			guiEvent->SetMouseState(event.button.button);
+			guiEvent->SetMouseState(event.button.button, true);
 			SDL_GetMouseState(&guiEvent->GetMousePos()->x, &guiEvent->GetMousePos()->y);
 			*guiEvent->getMousePressed(event.button.button) = true;
 			break;
 		case SDL_MOUSEBUTTONUP:
-			guiEvent->SetMouseState(event.button.button);
+			guiEvent->SetMouseState(event.button.button, false);
+			*guiEvent->getMousePressed(event.button.button) = false;
 			break;
 		default:
 			break;
