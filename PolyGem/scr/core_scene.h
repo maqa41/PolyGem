@@ -106,19 +106,14 @@ namespace plg {
 		bool SetVertex(Mesh* mesh, Vec2 mousePos);
 		bool SetEdge(Mesh* mesh, Vec2 mousePos);
 		bool SetFace(Mesh* mesh, Vec2 mousePos);
+		void SetMode(uint8_t mode);
+		void Clear();
 		MeshMode GetMode() { return m_Mode; }
-		void SetMode(const MeshMode& mode) { m_Mode = mode; }
 		int GetMeshID() { return m_SelectedMeshID; }
 		bool IsCleared() { return m_Cleared; }
 		container::ListIterator<container::List<int>> GetVertexIter() { return m_SelectedVertices.Begin(); }
 		container::ListIterator<container::List<int>> GetEdgeIter() { return m_SelectedEdges.Begin(); }
-		container::ListIterator<container::List<int>> GetFaceIter() { return m_SelectedEdges.Begin(); }
-		void Clear() {
-			m_SelectedVertices.Clear();
-			m_SelectedEdges.Clear();
-			m_SelectedFaces.Clear();
-			m_Cleared = true;
-		}
+		container::ListIterator<container::List<int>> GetFaceIter() { return m_SelectedFaces.Begin(); }
 
 	private:
 		SceneMeshData(const SceneMeshData&) { }

@@ -39,9 +39,9 @@ static bool s_InsideCircumCircle(plg::Vec2 vert1, plg::Vec2 vert2, plg::Vec2 ver
 }
 
 static bool s_InsideTriangle(plg::Vec2 vert1, plg::Vec2 vert2, plg::Vec2 vert3, plg::Vec2 other) {
-	plg::Vec2 normal1 = (vert2 - vert1).RotateByVec(plg::Vec2(0.0f, 1.0f));
-	plg::Vec2 normal2 = (vert3 - vert2).RotateByVec(plg::Vec2(0.0f, 1.0f));
-	plg::Vec2 normal3 = (vert1 - vert3).RotateByVec(plg::Vec2(0.0f, 1.0f));
+	plg::Vec2 normal1 = (vert1 - vert2).RotateByVec(plg::Vec2(0.0f, 1.0f));
+	plg::Vec2 normal2 = (vert2 - vert3).RotateByVec(plg::Vec2(0.0f, 1.0f));
+	plg::Vec2 normal3 = (vert3 - vert1).RotateByVec(plg::Vec2(0.0f, 1.0f));
 
 	plg::Vec2 vert10 = other - vert1;
 	plg::Vec2 vert20 = other - vert2;
@@ -319,18 +319,36 @@ void plg::Mesh::Render(SDL_Renderer* renderer, Vec2 offset) {
 	for (auto it_edge = m_Edges.Begin(); it_edge < it_edge.end_ptr; it_edge++) {
 		SDL_RenderDrawLine(renderer, (int)it_edge->GetStart(&m_Vertices).x, (int)it_edge->GetStart(&m_Vertices).y, (int)it_edge->GetEnd(&m_Vertices).x, (int)it_edge->GetEnd(&m_Vertices).y);
 	}
-	SDL_SetRenderDrawColor(renderer, 216, 116, 56, SDL_ALPHA_OPAQUE);
-	for (auto edge_it = sceneMeshData.GetEdgeIter(); edge_it < edge_it.end_ptr && sceneMeshData.GetMode() == MeshMode::PLG_EDGE; edge_it++) {
-		Edge edge = m_Edges[*edge_it];
-		SDL_RenderDrawLine(renderer, (int)m_Vertices[edge.m_Start].x, (int)m_Vertices[edge.m_Start].y, (int)m_Vertices[edge.m_End].x, (int)m_Vertices[edge.m_End].y);
+	if (sceneMeshData.GetMode() == MeshMode::PLG_EDGE) {
+		SDL_SetRenderDrawColor(renderer, 216, 116, 56, SDL_ALPHA_OPAQUE);
+		for (auto edge_it = sceneMeshData.GetEdgeIter(); edge_it < edge_it.end_ptr; edge_it++) {
+			Edge edge = m_Edges[*edge_it];
+			SDL_RenderDrawLine(renderer, (int)m_Vertices[edge.m_Start].x, (int)m_Vertices[edge.m_Start].y, (int)m_Vertices[edge.m_End].x, (int)m_Vertices[edge.m_End].y);
+		}
 	}
-
-	for (auto it_vertex = m_Vertices.Begin(); it_vertex < it_vertex.end_ptr && sceneMeshData.GetMode() == MeshMode::PLG_VERTEX; it_vertex++) {
-		drawCircleFilled(renderer, it_vertex->x, it_vertex->y, 2, { 216, 216, 216, SDL_ALPHA_OPAQUE });
+	else if (sceneMeshData.GetMode() == MeshMode::PLG_VERTEX) {
+		for (auto it_vertex = m_Vertices.Begin(); it_vertex < it_vertex.end_ptr; it_vertex++) {
+			drawCircleFilled(renderer, it_vertex->x, it_vertex->y, 2, { 216, 216, 216, SDL_ALPHA_OPAQUE });
+		}
+		for (auto vertex_it = sceneMeshData.GetVertexIter(); vertex_it < vertex_it.end_ptr; vertex_it++) {
+			Vec2 vertex = m_Vertices[*vertex_it];
+			drawCircleFilled(renderer, vertex.x, vertex.y, 2, { 216, 116, 56, SDL_ALPHA_OPAQUE });
+		}
 	}
-	for (auto vertex_it = sceneMeshData.GetVertexIter(); vertex_it < vertex_it.end_ptr && sceneMeshData.GetMode() == MeshMode::PLG_VERTEX; vertex_it++) {
-		Vec2 vertex = m_Vertices[*vertex_it];
-		drawCircleFilled(renderer, vertex.x, vertex.y, 2, { 216, 116, 56, SDL_ALPHA_OPAQUE });
+	else if (sceneMeshData.GetMode() == MeshMode::PLG_FACE) {
+		for (auto it_face = m_Faces.Begin(); it_face < it_face.end_ptr; it_face++) {
+			drawPolygon(renderer, { m_Vertices[it_face->m_Vert1], m_Vertices[it_face->m_Vert2], m_Vertices[it_face->m_Vert3] }, { 20, 20, 20, SDL_ALPHA_OPAQUE });
+			drawRawPolygon(renderer, { m_Vertices[it_face->m_Vert1], m_Vertices[it_face->m_Vert2], m_Vertices[it_face->m_Vert3] }, { 216, 216, 216, SDL_ALPHA_OPAQUE });
+			Vec2 center = GetFaceCenter(*it_face);
+			drawCircleFilled(renderer, center.x, center.y, 2, { 216, 216, 216, SDL_ALPHA_OPAQUE });
+		}
+		for (auto face_it = sceneMeshData.GetFaceIter(); face_it < face_it.end_ptr; face_it++) {
+			Face face = m_Faces[*face_it];
+			drawPolygon(renderer, { m_Vertices[face.m_Vert1], m_Vertices[face.m_Vert2], m_Vertices[face.m_Vert3] }, { 36, 30, 20, SDL_ALPHA_OPAQUE });
+			drawRawPolygon(renderer, { m_Vertices[face.m_Vert1], m_Vertices[face.m_Vert2], m_Vertices[face.m_Vert3] }, { 216, 116, 56, SDL_ALPHA_OPAQUE });
+			Vec2 center = GetFaceCenter(face);
+			drawCircleFilled(renderer, center.x, center.y, 2, { 216, 116, 56, SDL_ALPHA_OPAQUE });
+		}
 	}
 }
 
@@ -362,10 +380,32 @@ bool plg::SceneMeshData::SetEdge(Mesh* mesh, Vec2 mousePos) {
 bool plg::SceneMeshData::SetFace(Mesh* mesh, Vec2 mousePos) {
 	for (auto iter = mesh->GetFaceIter(); iter < iter.end_ptr; iter++)
 		if (s_CollideFace(*iter, mesh->GetVertexList(), mousePos)) {
+			m_Cleared = false;
 			m_SelectedFaces.Append((int)(iter.operator->() - iter.GetBegin()));
 			return true;
 		}
 	return false;
+}
+
+void plg::SceneMeshData::SetMode(uint8_t mode) {
+	switch (mode) {
+	case 0:
+		m_Mode = MeshMode::PLG_VERTEX;
+		break;
+	case 1:
+		m_Mode = MeshMode::PLG_EDGE;
+		break;
+	case 2:
+		m_Mode = MeshMode::PLG_FACE;
+		break;
+	}
+}
+
+void plg::SceneMeshData::Clear() {
+	m_SelectedVertices.Clear();
+	m_SelectedEdges.Clear();
+	m_SelectedFaces.Clear();
+	m_Cleared = true;
 }
 
 plg::SceneMeshData plg::sceneMeshData = plg::SceneMeshData();

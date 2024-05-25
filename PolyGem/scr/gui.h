@@ -97,8 +97,8 @@ namespace gui {
 		uint8_t GetSize() { return m_Size; }
 		SDL_Rect GetRect() { return m_Rect; }
 		SDL_Texture** GetTextTexture() { return &m_TextTexture; }
-		void updatePosition(Vector2D offset);
-		void Render(SDL_Renderer* renderer);
+		void UpdatePosition(Vector2D offset);
+		void Render(SDL_Renderer* renderer, Vector2D offset = { 0, 0 });
 
 	private:
 		std::string m_Text;
@@ -107,6 +107,38 @@ namespace gui {
 		SDL_Color m_ColorBG;
 		SDL_Rect m_Rect;
 		SDL_Texture* m_TextTexture = nullptr;
+	};
+
+	class LabelNode : public Label {
+	public:
+		LabelNode() : Label() { }
+		LabelNode(int parent, SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG = DefaultTextColor, SDL_Color colorBG = DefaultColorBG)
+			: Label(renderer, rect, text, size, colorFG, colorBG), m_Parent(parent) { }
+		LabelNode(const LabelNode& other);
+		LabelNode(LabelNode&& other) noexcept;
+		LabelNode& operator=(const LabelNode& other);
+		LabelNode& operator=(LabelNode&& other) noexcept;
+		~LabelNode() { }
+
+		int8_t GetParent() { return m_Parent; }
+		void SetParent(int8_t parent) { m_Parent = parent; }
+		uint8_t GetState() { return m_State; }
+		void SetState(uint8_t state) { m_State = state; }
+		uint8_t GetChildCount() { return m_ChildCount; }
+		void IncChild() { m_ChildCount++; }
+		void DecChild() { m_ChildCount--; }
+
+		static constexpr int8_t NO_PARENT = 0xff;
+		static constexpr uint8_t NULLED = 0x00;
+		static constexpr uint8_t NO_CHILD = 0x01;
+		static constexpr uint8_t HAS_CHILD_EXPANDED = 0x02;
+		static constexpr uint8_t HAS_CHILD_SHRINKED = 0x03;
+
+	private:
+		int8_t m_Parent = NO_PARENT;
+		uint8_t m_State = NULLED;
+		uint8_t m_ChildCount = NULLED;
+		//SDL_Texture* m_Texture = nullptr;
 	};
 
 	class Button {
@@ -172,6 +204,7 @@ namespace gui {
 		SDL_Color GetColorFG() { return m_ColorFG; }
 		int8_t& GetHovered() { return m_IsHovered; }
 		void SetState(uint8_t button) { m_SetButton = button; }
+		uint8_t GetState() { return m_SetButton; }
 		container::ListIterator<container::List<Label>> GetLabelIterator() { return m_Labels.Begin(); }
 		container::List<Label>* GetLabelList() { return &m_Labels; }
 		container::ListIterator<container::List<SDL_Rect>> GetRectIterator() { return m_Rects.Begin(); }
@@ -209,6 +242,24 @@ namespace gui {
 		Label m_Label;
 		bool m_IsHovered = false;
 		bool m_State = false;
+	};
+
+	class TreeView {
+	public:
+		TreeView() { }
+		TreeView(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, std::initializer_list<int> layers, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor, SDL_Color colorBG = DefaultColorBG);
+		TreeView(const TreeView& other);
+		TreeView(TreeView&& other) noexcept;
+		TreeView& operator=(const TreeView& other);
+		TreeView& operator=(TreeView&& other) noexcept;
+		~TreeView() { }
+
+		void InsertNode();
+		void DeleteNode();
+		void Render(SDL_Renderer* renderer);
+
+	private:
+		container::List<LabelNode> m_LabelNodes;
 	};
 
 	class Layer {

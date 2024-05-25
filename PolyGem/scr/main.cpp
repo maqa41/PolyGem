@@ -61,14 +61,17 @@ int main() {
 	}
 	
 	gui::InitializeGUIStatics(renderer);
-	gui::Layer testLayer(renderer, { 10, 10, 150, 100 }, gui::DefaultColorBG);
+	gui::Layer testLayer(renderer, { 10, 10, 200, 100 }, gui::DefaultColorBG);
 	gui::Frame testFrame(renderer, { 200, 200, 360, 360 });
-	testLayer.AddCheckButton(renderer, { 10, 10, 0, 0 }, "Edge mode", 20, gui::DefaultPrimaryButtonColor);
-	gui::CheckButton* edgeButton = testLayer.GetCheckButtonIterator().operator->();
+	testLayer.AddRadioButton(renderer, { 10, 10, 0, 0 }, { "Vertex Mode", "Edge Mode", "Face Mode"}, 20, gui::DefaultPrimaryButtonColor);
+	gui::RadioButton* edgeButton = testLayer.GetRadioButtonIterator().operator->();
 	container::List<plg::Mesh> sceneMesh;
 	sceneMesh.Append(plg::Mesh({ plg::Vertex(50, 50), plg::Vertex(90, 150), plg::Vertex(130, 100), plg::Vertex(100, 100),
 		plg::Vertex(50, 140), plg::Vertex(80, 140), plg::Vertex(20, 90), plg::Vertex(180, 40), plg::Vertex(150, 40),
 		plg::Vertex(240, 110), plg::Vertex(190, 130), plg::Vertex(50, 200), plg::Vertex(120, 170), plg::Vertex(200, 240), plg::Vertex(210, 20) }));
+	
+	gui::TreeView testTree(renderer, { 500, 10, 0, 0 }, { "Branch0", "Branch01", "Branch02", "Branch1", "Branch11", "Branch111", "Branch112", "Branch113", "Branch12", "Branch121", "Branch122", "Branch2" },
+		{ 0, 1, 1, 0, 1, 2, 2, 2, 1, 2, 2, 0 }, 20, gui::DefaultGUIColor, gui::DefaultTextColor, gui::DefaultDestructiveButtonColor);
 	
 	while (!(*guiEvent.GetQuitState())) {
 		container::List<plg::Vertex>* vertices = sceneMesh[0].GetVertexList();
@@ -81,13 +84,14 @@ int main() {
 		gui::RetriveGUIEvents(&guiEvent);
 		gui::HandleGUIEvents(&guiEvent, &testLayer);
 		gui::HandleSceneEvents(&guiEvent, &testFrame, (void*)(&sceneMesh));
-		plg::sceneMeshData.SetMode((edgeButton->GetState()) ? plg::MeshMode::PLG_EDGE : plg::MeshMode::PLG_VERTEX);
+		plg::sceneMeshData.SetMode(edgeButton->GetState());
 		
 		testFrame.SetRenderTarget(renderer);
 		sceneMesh[0].Render(renderer, plg::Vec2());
 		testFrame.UnSetRenderTarget(renderer);
 		testFrame.Render(renderer);
 		testLayer.Render(renderer);
+		testTree.Render(renderer);
 		
 		SDL_RenderPresent(renderer);
 		SDL_Delay(17);

@@ -77,19 +77,45 @@ gui::Label& gui::Label::operator=(Label&& other) noexcept {
 	return *this;
 }
 
-void gui::Label::updatePosition(Vector2D offset) {
+void gui::Label::UpdatePosition(Vector2D offset) {
 	m_Rect.x += offset.x;
 	m_Rect.y += offset.y;
 }
 
-void gui::Label::Render(SDL_Renderer* renderer) {
-	SDL_RenderCopy(renderer, m_TextTexture, NULL, &m_Rect);
+void gui::Label::Render(SDL_Renderer* renderer, Vector2D offset) {
+	SDL_Rect offsetRect = { m_Rect.x + offset.x, m_Rect.y + offset.y, m_Rect.w, m_Rect.h };
+	SDL_RenderCopy(renderer, m_TextTexture, NULL, &offsetRect);
+}
+
+gui::LabelNode::LabelNode(const LabelNode& other)
+	: Label(other), m_Parent(other.m_Parent), m_State(other.m_State), m_ChildCount(other.m_ChildCount) { }
+gui::LabelNode::LabelNode(LabelNode&& other) noexcept 
+	: Label(std::move(other)), m_Parent(other.m_Parent), m_State(other.m_State), m_ChildCount(other.m_ChildCount) { }
+
+gui::LabelNode& gui::LabelNode::operator=(const LabelNode& other) {
+	if (this != &other) {
+		Label::operator=(other);
+		m_Parent = other.m_Parent;
+		m_State = other.m_State;
+		m_ChildCount = other.m_ChildCount;
+	}
+	return *this;
+}
+
+gui::LabelNode& gui::LabelNode::operator=(LabelNode&& other) noexcept {
+	if (this != &other) {
+		Label::operator=(std::move(other));
+		m_Parent = other.m_Parent;
+		m_State = other.m_State;
+		m_ChildCount = other.m_ChildCount;
+	}
+	return *this;
 }
 
 gui::Button::Button(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG, SDL_Color labelColor) : m_Label(renderer, rect, text, size, labelColor, colorFG), m_Rect(rect), m_ColorFG(colorFG) {
 	m_Rect.w = m_Label.GetRect().w + 8;
 	m_Rect.h = m_Label.GetRect().h + 8;
-	m_Label.updatePosition({ 4, 4 });
+	m_Label.UpdatePosition({ 4, 4 });
 }
 
 gui::Button::Button(const Button& other) 
@@ -139,7 +165,7 @@ gui::Slider::Slider(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uin
 	m_Rect.h = (orientation == GUI_VERTICAL) ? 100 : size / 2;
 	m_Rect.x = m_Rect.x + (orientation == GUI_VERTICAL) * (m_Label.GetRect().w / 2 - m_Rect.w / 2);
 	m_Rect.y = m_Rect.y + m_Label.GetRect().h;
-	m_Label.updatePosition({ (orientation == GUI_HORIZONTAL) * (50 - m_Label.GetRect().w / 2), 0 });
+	m_Label.UpdatePosition({ (orientation == GUI_HORIZONTAL) * (50 - m_Label.GetRect().w / 2), 0 });
 }
 
 gui::Slider::Slider(const Slider& other) 
@@ -209,12 +235,12 @@ void gui::Slider::Render(SDL_Renderer* renderer) {
 
 gui::RadioButton::RadioButton(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, uint8_t size, SDL_Color colorFG, SDL_Color labelColor, SDL_Color colorBG) : m_ColorFG(colorFG) {
 	for (auto label: labels) {
-		m_Labels.Append(Label(renderer, { rect.x, rect.y + size + 4 }, label, size, labelColor, colorBG));
+		m_Labels.Append(Label(renderer, { rect.x, rect.y}, label, size, labelColor, colorBG));
 	}
 	for (auto iter = m_Labels.Begin(); iter < iter.end_ptr; iter++) {
 		SDL_Rect rect = iter->GetRect();
 		m_Rects.Append({ rect.x, rect.y + iter->GetRect().h * ((int)m_Labels.GetSize() - (int)(iter.end_ptr - iter.operator->())), rect.w + rect.h, rect.h });
-		iter->updatePosition({ rect.h, iter->GetRect().h * ((int)m_Labels.GetSize() - (int)(iter.end_ptr - iter.operator->())) });
+		iter->UpdatePosition({ rect.h, iter->GetRect().h * ((int)m_Labels.GetSize() - (int)(iter.end_ptr - iter.operator->())) });
 	}
 }
 
@@ -269,7 +295,7 @@ void gui::RadioButton::Render(SDL_Renderer* renderer) {
 gui::CheckButton::CheckButton(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG, SDL_Color labelColor, SDL_Color colorBG) : m_ColorFG(colorFG), m_Rect(rect), m_Label(renderer, rect, text, size, labelColor, colorBG) {
 	m_Rect.w = m_Label.GetRect().w + m_Label.GetRect().h;
 	m_Rect.h = m_Label.GetRect().h;
-	m_Label.updatePosition({ m_Label.GetRect().h, 0 });
+	m_Label.UpdatePosition({ m_Label.GetRect().h, 0 });
 }
 
 gui::CheckButton::CheckButton(const CheckButton& other)
@@ -314,6 +340,69 @@ void gui::CheckButton::Render(SDL_Renderer* renderer) {
 	else {
 		drawRectRound(renderer, targetRect, 4, targetColor);
 		drawRectRound(renderer, { targetRect.x + 1, targetRect.y + 1, targetRect.h - 2, targetRect.h - 2 }, 4, m_Label.GetColorBG());
+	}
+}
+
+gui::TreeView::TreeView(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, std::initializer_list<int> layers, uint8_t size, SDL_Color colorFG, SDL_Color labelColor, SDL_Color colorBG) {
+	int parent = LabelNode::NO_PARENT;
+	int objPCount = 0, prevDepth = 0, depthDiff = 0, depthIterCount = 0;
+	auto label_iter = labels.begin();
+	auto layer_iter = layers.begin();
+	LabelNode* currParent;
+	for (; label_iter != labels.end();) {
+		if (prevDepth != *layer_iter) {
+			depthDiff = std::abs(*layer_iter - prevDepth);
+			if (*layer_iter < prevDepth) {
+				while (depthIterCount < depthDiff && parent != LabelNode::NO_PARENT) {
+					parent = m_LabelNodes[parent].GetParent();
+					depthIterCount++;
+				}
+				depthIterCount = 0;
+			}
+			else if (*layer_iter > prevDepth) {
+				parent = m_LabelNodes.GetSize() - 1;
+			}
+		}
+		prevDepth = *layer_iter;
+		m_LabelNodes.Append(LabelNode(parent, renderer, rect, *label_iter, size, labelColor, colorBG));
+		LabelNode* curr = &m_LabelNodes[m_LabelNodes.GetSize() - 1];
+		if (parent != LabelNode::NO_PARENT) {
+			currParent = &m_LabelNodes[parent];
+			currParent->IncChild();
+			currParent->SetState(LabelNode::HAS_CHILD_EXPANDED);
+			curr->UpdatePosition({ (*layer_iter + 1) * curr->GetRect().h, currParent->GetChildCount() * curr->GetRect().h });
+		}
+		else {
+			curr->UpdatePosition({ (*layer_iter + 1) * curr->GetRect().h, objPCount * curr->GetRect().h });
+			objPCount++;
+		}
+		label_iter++;
+		layer_iter++;
+	}
+}
+
+gui::TreeView::TreeView(const TreeView& other) : m_LabelNodes(other.m_LabelNodes) { }
+
+gui::TreeView::TreeView(TreeView&& other) noexcept : m_LabelNodes(std::move(other.m_LabelNodes)) { }
+
+gui::TreeView& gui::TreeView::operator=(const TreeView& other) {
+	if (this != &other){
+		m_LabelNodes = other.m_LabelNodes;
+	}
+	return *this;
+}
+
+gui::TreeView& gui::TreeView::operator=(TreeView&& other) noexcept {
+	if (this != &other){
+		m_LabelNodes = std::move(other.m_LabelNodes);
+	}
+	return *this;
+}
+
+
+void gui::TreeView::Render(SDL_Renderer* renderer) {
+	for (auto label_it = m_LabelNodes.Begin(); label_it < label_it.end_ptr; label_it++) {
+		label_it->Render(renderer);
 	}
 }
 
@@ -431,7 +520,7 @@ void gui::HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw
 	if (guiEvent->GetKeyState(SDL_SCANCODE_SPACE) && meshID != plg::sceneMeshData.NULLMESH && !plg::sceneMeshData.IsCleared()) {
 		Vector2D mousePos = guiEvent->GetMouseCurrentPos();
 		plg::Vec2 offset(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y);
-		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX) {
+  		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX) {
 			auto vertex_it = plg::sceneMeshData.GetVertexIter();
 			offset = offset - scene->operator[](meshID).GetVertexList()->operator[](*vertex_it);
 			for (; vertex_it < vertex_it.end_ptr; vertex_it++) {
@@ -449,7 +538,15 @@ void gui::HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw
 			}
 		}
 		else if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_FACE) {
-
+			auto face_it = plg::sceneMeshData.GetFaceIter();
+			plg::Face init_face = scene->operator[](meshID).GetFaceList()->operator[](*face_it);
+			offset = offset - scene->operator[](meshID).GetFaceCenter(init_face);
+			for (; face_it < face_it.end_ptr; face_it++) {
+				plg::Face face = scene->operator[](meshID).GetFaceList()->operator[](*face_it);
+				indexSet.insert(face.m_Vert1);
+				indexSet.insert(face.m_Vert2);
+				indexSet.insert(face.m_Vert3);
+			}
 		}
 		for (auto index = indexSet.begin(); index != indexSet.end(); index++) {
 			scene->operator[](meshID).GetVertexList()->operator[](*index).AddVec(offset);
@@ -468,6 +565,9 @@ void gui::HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw
 		}
 		else if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_EDGE) {
 			state = plg::sceneMeshData.SetEdge(&(scene->operator[](meshID)), plg::Vec2(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y));
+		}
+		else if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_FACE) {
+			state = plg::sceneMeshData.SetFace(&(scene->operator[](meshID)), plg::Vec2(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y));
 		}
 		if (!state && !(guiEvent->GetKeyState(SDL_SCANCODE_LSHIFT) || guiEvent->GetKeyState(SDL_SCANCODE_RSHIFT))) {
 			plg::sceneMeshData.Clear();

@@ -173,7 +173,8 @@ SDL_Surface* downsample2x(SDL_Surface* surface) {
 	return sampledSurface;
 }
 
-void drawRawPolygon(SDL_Renderer* renderer, container::List<plg::Vec2>& vertices, SDL_Color color) {
+void drawRawPolygon(SDL_Renderer* renderer, std::initializer_list<plg::Vec2> vertex_list, SDL_Color color) {
+	container::List<plg::Vec2> vertices(vertex_list);
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, SDL_ALPHA_OPAQUE);
 	for (int i = 0; i < vertices.GetCapacity(); i++) {
 		plg::Vec2 vertex_s = vertices[i];
@@ -182,7 +183,8 @@ void drawRawPolygon(SDL_Renderer* renderer, container::List<plg::Vec2>& vertices
 	}
 }
 
-void drawPolygon(SDL_Renderer* renderer, container::List<plg::Vec2>& vertices, SDL_Color color) {
+void drawPolygon(SDL_Renderer* renderer, std::initializer_list<plg::Vec2> vertex_list, SDL_Color color) {
+	container::List<plg::Vec2> vertices(vertex_list);
 	plg::Vec2 topVertex = vertices[0];
 	for (int i = 1; i < vertices.GetCapacity() - 1; i++) {
 		plg::Vec2 vertex = vertices[i];

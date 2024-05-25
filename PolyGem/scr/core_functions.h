@@ -18,5 +18,5 @@ void drawCircleFilled(SDL_Renderer* renderer, int x0, int y0, int radius, SDL_Co
 void drawEllipseFilled(SDL_Renderer* renderer, int x0, int y0, int width, int height, SDL_Color color);
 void drawEllipseThickness(SDL_Renderer* renderer, int x0, int y0, int width, int height, int thickness, SDL_Color color);
 void drawRectRound(SDL_Renderer* renderer, SDL_Rect rect, int radius, SDL_Color color);
-void drawRawPolygon(SDL_Renderer* renderer, container::List<plg::Vec2>& vertices, SDL_Color color);
-void drawPolygon(SDL_Renderer* renderer, container::List<plg::Vec2>& vertices, SDL_Color color);
+void drawRawPolygon(SDL_Renderer* renderer, std::initializer_list<plg::Vec2> vertex_list, SDL_Color color);
+void drawPolygon(SDL_Renderer* renderer, std::initializer_list<plg::Vec2> vertex_list, SDL_Color color);

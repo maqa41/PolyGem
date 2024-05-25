@@ -15,3 +15,65 @@
 - Implement "Mesh" selection
 - Implement "Mesh" merge
 - Implement removal of "Vertex", "Edge" and "Face"
+- Material system for the "Mesh" objects
+- Material rendering
+
+=============== Scene API ===============
+
+	>> Add scene graph.
+	>> Add nodes for objects, cameras and lights.
+	>> Implement grouping and parent-child relationships between objects.
+	>> Implement camera system.
+	>> Implement camera properties such as position, orientation, field of view, and depth of field settings.
+	>> Implement 2D lighting effects, integrate lighting nodes into the scene graph.
+	>> Implement shadow casting and shadow receivers.
+	>> Toggle the visibility of individual objects, groups, or layers to simplify complex scenes.
+	>> Provide locking mechanisms to prevent accidental changes to objects.
+
+================ Mesh API ================
+
+	>> Creation and removal of vertices.
+	>> Vertex selection (for editing and manipulation).
+	>> Creation and removal of edges.
+	>> Connection of vertices to form edges.
+	>> Edge attributes (e.g., smoothing groups, visibility).
+	>> Edge selection and manipulation.
+	>> Creation and removal of faces.
+	>> Face attributes (e.g., material assignments, UV mapping).
+	>> Face selection and manipulation.
+	>> Triangulation and polygon filling algorithms.
+	>> Subdivision algorithms for refining mesh details.
+	>> Deformation tools (e.g., bend, twist, taper) for modifying the mesh.
+	>> Scaling, rotating, and translating the entire mesh.
+	>> Local transformations for individual components (vertices, edges, faces).
+	>> Boolean operations (union, subtraction, intersection) for combining or splitting meshes.
+	>> Extrusion and beveling for creating 3D-like effects in 2D meshes.
+	>> Selecting vertices, edges, and faces individually or in groups.
+	>> Transforming selected components collectively.
+	>> Smooth and sharp edge creasing.
+	>> UV unwrapping tools for applying textures to the mesh.
+	>> Texture coordinate editing and manipulation.
+	>> Tools for rigging and animating the mesh, especially if you plan to support bone rigging.
+	>> Keyframe-based animation for mesh deformations.
+	>> Different selection modes (vertex, edge, face, lasso, etc.) for user convenience.
+
+================ Animation API ================
+
+	>> Ability to set keyframes for various properties (position, rotation, scale) of objects, including meshes and vector graphics.
+	>> Interpolation between keyframes to create smooth motion.
+	>> A timeline that allows users to manage and visualize the animation over time.
+	>> Keyframe manipulation on the timeline, including adding, deleting, and moving keyframes.
+	>> Scrubbing (dragging the playhead to preview animations).
+	>> Support for animation curves (e.g., linear, ease-in, ease-out) to control the timing and acceleration of animations.
+	>> Bezier curve editors for fine-tuning animation curves.
+	>> Tools for creating and manipulating skeletons (bone systems) for character animation.
+	>> Skin weighting for associating vertices with bones.
+	>> Inverse kinematics (IK) for realistic limb movement.
+	>> Support for sprite sheet animations.
+	>> Tools for importing and managing sprite sheets.
+	>> Visual aids for seeing previous and future frames to assist with animation continuity.
+	>> Support for particle systems and their animations for effects like fire, smoke, and rain.
+	>> Tools for creating masks and clipping paths for vector graphics and images.
+	>> Ability to define and edit motion paths for objects to follow.
+	>> Real-time playback of animations within the software for instant feedback.
+	>> Support for animating text elements, including fonts, size, and style changes.

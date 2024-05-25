@@ -27,7 +27,7 @@ namespace plg {
 		float GetDistancetoSquared(const Vec2 other) { return (other.x - x) * (other.x - x) + (other.y - y) * (other.y - y); }
 		void Normalize();
 		float NormalReturnMag();
-		void SetZero() {
+		void Reset() {
 			x = 0.0f;
 			y = 0.0f;
 		}
@@ -67,12 +67,13 @@ namespace plg {
 		Vec2 operator- (const Vec2& vec) {
 			return Vec2(x - vec.x, y - vec.y);
 		}
-		Vec2 ComponentProduct(const Vec2& vec){ return Vec2(x * vec.x, y * vec.y); }
+		Vec2 ComponentProduct(const Vec2& vec) { return Vec2(x * vec.x, y * vec.y); }
 		void ComponentProductUpdate(const Vec2& vec) {
 			x *= vec.x;
 			y *= vec.y;
 		}
-		float ScalarProduct(const Vec2& vec){ return x * vec.x + y * vec.y; }
+		float ScalarProduct(const Vec2& vec) { return x * vec.x + y * vec.y; }
+		float CrossProduct(const Vec2& vec) { return x * vec.y - y * vec.x; }
 		void ConjugateWith(Vec2& vec);
 		float operator* (const Vec2& vec) { return x * vec.x + y * vec.y; }
 		void AddVec(const Vec2& vec) {
