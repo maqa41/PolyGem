@@ -360,7 +360,7 @@ bool plg::SceneMeshData::SetVertex(Mesh* mesh, Vec2 mousePos) {
 	for (auto iter = mesh->GetVertexIter(); iter < iter.end_ptr; iter++)
 		if (s_CollideVertex(*iter, mousePos)) {
 			m_Cleared = false;
-			m_SelectedVertices.Append((int)(iter.operator->() - iter.GetBegin()));
+			m_SelectedVertices.Append((int)iter.GetIndex());
 			Log("Selected Vertex.", true);
 			return true;
 		}
@@ -371,7 +371,7 @@ bool plg::SceneMeshData::SetEdge(Mesh* mesh, Vec2 mousePos) {
 	for (auto iter = mesh->GetEdgeIter(); iter < iter.end_ptr; iter++)
 		if (s_CollideEdge(*iter, mesh->GetVertexList(), mousePos)) {
 			m_Cleared = false;
-			m_SelectedEdges.Append((int)(iter.operator->() - iter.GetBegin()));
+			m_SelectedEdges.Append((int)iter.GetIndex());
 			return true;
 		}
 	return false;
@@ -381,7 +381,7 @@ bool plg::SceneMeshData::SetFace(Mesh* mesh, Vec2 mousePos) {
 	for (auto iter = mesh->GetFaceIter(); iter < iter.end_ptr; iter++)
 		if (s_CollideFace(*iter, mesh->GetVertexList(), mousePos)) {
 			m_Cleared = false;
-			m_SelectedFaces.Append((int)(iter.operator->() - iter.GetBegin()));
+			m_SelectedFaces.Append((int)iter.GetIndex());
 			return true;
 		}
 	return false;

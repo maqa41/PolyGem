@@ -3,6 +3,7 @@
 #include "SDL_ttf.h"
 #include "container.h"
 #include <string>
+#include <utility>
 
 namespace gui {
 
@@ -93,9 +94,9 @@ namespace gui {
 
 		const char* GetText() { return m_Text.c_str(); }
 		SDL_Color GetColorFG() { return m_ColorFG; }
-		SDL_Color GetColorBG() { return m_ColorBG; }
-		uint8_t GetSize() { return m_Size; }
-		SDL_Rect GetRect() { return m_Rect; }
+		SDL_Color GetColorBG() const { return m_ColorBG; }
+		uint8_t GetSize() const { return m_Size; }
+		SDL_Rect GetRect() const { return m_Rect; }
 		SDL_Texture** GetTextTexture() { return &m_TextTexture; }
 		void UpdatePosition(Vector2D offset);
 		void Render(SDL_Renderer* renderer, Vector2D offset = { 0, 0 });
@@ -109,10 +110,21 @@ namespace gui {
 		SDL_Texture* m_TextTexture = nullptr;
 	};
 
+	enum class NodeState {
+		NORMAL = 0x00,
+		CHILD_EXPANDING = 0x01,
+		CHILD_COLLAPSING = 0x02,
+		HAS_CHILD_EXPANDED = 0x03,
+		HAS_CHILD_COLLAPSED = 0x04,
+		IS_EXPANDED = 0x05,
+		IS_COLLAPSED = 0x06,
+		NO_CHILD = 0x70
+	};
+
 	class LabelNode : public Label {
 	public:
 		LabelNode() : Label() { }
-		LabelNode(int parent, SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG = DefaultTextColor, SDL_Color colorBG = DefaultColorBG)
+		LabelNode(uint8_t parent, SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG = DefaultTextColor, SDL_Color colorBG = DefaultColorBG)
 			: Label(renderer, rect, text, size, colorFG, colorBG), m_Parent(parent) { }
 		LabelNode(const LabelNode& other);
 		LabelNode(LabelNode&& other) noexcept;
@@ -120,24 +132,29 @@ namespace gui {
 		LabelNode& operator=(LabelNode&& other) noexcept;
 		~LabelNode() { }
 
-		int8_t GetParent() { return m_Parent; }
+		uint8_t GetParent() const { return m_Parent; }
 		void SetParent(int8_t parent) { m_Parent = parent; }
-		uint8_t GetState() { return m_State; }
-		void SetState(uint8_t state) { m_State = state; }
-		uint8_t GetChildCount() { return m_ChildCount; }
+		NodeState GetState() const { return m_State; }
+		void SetState(NodeState state) { m_State = state; }
+		NodeState GetChildState() const { return m_ChildState; }
+		void SetChildState(NodeState state) { m_ChildState = state; }
+
+		uint8_t GetChildCount() const { return m_ChildCount; }
 		void IncChild() { m_ChildCount++; }
 		void DecChild() { m_ChildCount--; }
+		uint8_t GetChildSetCounter() const { return m_ChildSetCounter; }
+		void SetChildSetCounter() { m_ChildSetCounter = m_ChildCount; }
+		void DecSetChild() { m_ChildSetCounter--; }
 
-		static constexpr int8_t NO_PARENT = 0xff;
+		static constexpr uint8_t NO_PARENT = 0xff;
 		static constexpr uint8_t NULLED = 0x00;
-		static constexpr uint8_t NO_CHILD = 0x01;
-		static constexpr uint8_t HAS_CHILD_EXPANDED = 0x02;
-		static constexpr uint8_t HAS_CHILD_SHRINKED = 0x03;
 
 	private:
-		int8_t m_Parent = NO_PARENT;
-		uint8_t m_State = NULLED;
+		uint8_t m_Parent = NO_PARENT;
+		NodeState m_State = NodeState::IS_EXPANDED;
+		NodeState m_ChildState = NodeState::NO_CHILD;
 		uint8_t m_ChildCount = NULLED;
+		uint8_t m_ChildSetCounter = NULLED;
 		//SDL_Texture* m_Texture = nullptr;
 	};
 
@@ -254,12 +271,17 @@ namespace gui {
 		TreeView& operator=(TreeView&& other) noexcept;
 		~TreeView() { }
 
-		void InsertNode();
-		void DeleteNode();
+		container::ListIterator<container::List<LabelNode>> GetNodeIterator() { return m_LabelNodes.Begin(); }
+		int& GetHovered() { return m_IsHovered; }
+		void InsertNode(size_t index);
+		void DeleteNode(size_t index);
+		void ToggleNode(size_t index);
+		void UpdateStates();
 		void Render(SDL_Renderer* renderer);
 
 	private:
 		container::List<LabelNode> m_LabelNodes;
+		int m_IsHovered = -1;
 	};
 
 	class Layer {
@@ -272,6 +294,7 @@ namespace gui {
 		void AddSlider(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, float maxVal, uint8_t orientation, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor);
 		void AddRadioButton(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor);
 		void AddCheckButton(SDL_Renderer* renderer, SDL_Rect rect, const char* text, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor);
+		void AddTreeView(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, std::initializer_list<int> layers, uint8_t size, SDL_Color colorFG, SDL_Color labelColor = DefaultTextColor, SDL_Color colorBG = DefaultColorBG);
 
 		Vector2D GetPosition() { return { m_Rect.x, m_Rect.y }; }
 		SDL_Rect GetRect() { return m_Rect; }
@@ -279,6 +302,7 @@ namespace gui {
 		container::ListIterator<container::List<Slider>> GetSliderIterator() { return m_Sliders.Begin(); }
 		container::ListIterator<container::List<RadioButton>> GetRadioButtonIterator() { return m_RadioButtons.Begin(); }
 		container::ListIterator<container::List<CheckButton>> GetCheckButtonIterator() { return m_CheckButtons.Begin(); }
+		container::ListIterator<container::List<TreeView>> GetTreeViewIterator() { return m_TreeViews.Begin(); }
 		void Render(SDL_Renderer* renderer);
 
 	private:
@@ -289,6 +313,7 @@ namespace gui {
 		container::List<Slider> m_Sliders = container::List<Slider>(2);
 		container::List<RadioButton> m_RadioButtons = container::List<RadioButton>(2);
 		container::List<CheckButton> m_CheckButtons = container::List<CheckButton>(2);
+		container::List<TreeView> m_TreeViews = container::List<TreeView>(2);
 	};
 
 	class Frame {

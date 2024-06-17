@@ -1,5 +1,6 @@
 
 =========== gui.cpp ===========
+- Implement Add and Remove Node functionality in TreeView element
 - Add "Face" functionality to "HandleSceneEvents()"
 - Add some visuals to "Frame"
 - Add docking and resizing functionality to "Frame" & "Layer"

@@ -88,16 +88,19 @@ void gui::Label::Render(SDL_Renderer* renderer, Vector2D offset) {
 }
 
 gui::LabelNode::LabelNode(const LabelNode& other)
-	: Label(other), m_Parent(other.m_Parent), m_State(other.m_State), m_ChildCount(other.m_ChildCount) { }
+	: Label(other), m_Parent(other.m_Parent), m_State(other.m_State), m_ChildState(other.m_ChildState), m_ChildCount(other.m_ChildCount), m_ChildSetCounter(other.m_ChildSetCounter) { }
+
 gui::LabelNode::LabelNode(LabelNode&& other) noexcept 
-	: Label(std::move(other)), m_Parent(other.m_Parent), m_State(other.m_State), m_ChildCount(other.m_ChildCount) { }
+	: Label(std::move(other)), m_Parent(other.m_Parent), m_State(other.m_State), m_ChildState(other.m_ChildState), m_ChildCount(other.m_ChildCount), m_ChildSetCounter(other.m_ChildSetCounter) { }
 
 gui::LabelNode& gui::LabelNode::operator=(const LabelNode& other) {
 	if (this != &other) {
 		Label::operator=(other);
 		m_Parent = other.m_Parent;
 		m_State = other.m_State;
+		m_ChildState = other.m_ChildState;
 		m_ChildCount = other.m_ChildCount;
+		m_ChildSetCounter = other.m_ChildSetCounter;
 	}
 	return *this;
 }
@@ -107,7 +110,9 @@ gui::LabelNode& gui::LabelNode::operator=(LabelNode&& other) noexcept {
 		Label::operator=(std::move(other));
 		m_Parent = other.m_Parent;
 		m_State = other.m_State;
+		m_ChildState = other.m_ChildState;
 		m_ChildCount = other.m_ChildCount;
+		m_ChildSetCounter = other.m_ChildSetCounter;
 	}
 	return *this;
 }
@@ -239,8 +244,8 @@ gui::RadioButton::RadioButton(SDL_Renderer* renderer, SDL_Rect rect, std::initia
 	}
 	for (auto iter = m_Labels.Begin(); iter < iter.end_ptr; iter++) {
 		SDL_Rect rect = iter->GetRect();
-		m_Rects.Append({ rect.x, rect.y + iter->GetRect().h * ((int)m_Labels.GetSize() - (int)(iter.end_ptr - iter.operator->())), rect.w + rect.h, rect.h });
-		iter->UpdatePosition({ rect.h, iter->GetRect().h * ((int)m_Labels.GetSize() - (int)(iter.end_ptr - iter.operator->())) });
+		m_Rects.Append({ rect.x, rect.y + iter->GetRect().h * (int)iter.GetIndex(), rect.w + rect.h, rect.h});
+		iter->UpdatePosition({ rect.h, iter->GetRect().h * (int)iter.GetIndex() });
 	}
 }
 
@@ -277,14 +282,14 @@ void gui::RadioButton::Render(SDL_Renderer* renderer) {
 		Vector2D center{ iter_Rect->x + iter_Rect->h / 2, iter_Rect->y + iter_Rect->h / 2 };
 		iter_Label->Render(renderer);
 		SDL_Color targetColor = m_ColorFG;
-		if (m_IsHovered == iter_Label.operator->() - iter_Label.GetBegin()) {
+		if (m_IsHovered == iter_Label.GetIndex()) {
 			targetColor.r += 35 * (255 - targetColor.r > 34);
 			targetColor.g += 35 * (255 - targetColor.g > 34);
 			targetColor.b += 35 * (255 - targetColor.b > 34);
 		}
 		drawCircleFilled(renderer, center.x, center.y, iter_Rect->h / 3, targetColor);
 		drawCircleFilled(renderer, center.x, center.y, iter_Rect->h / 3 - 1, iter_Label->GetColorBG());
-		if (iter_Label.operator->() - iter_Label.GetBegin() == m_SetButton) {
+		if (iter_Label.GetIndex() == m_SetButton) {
 			drawCircleFilled(renderer, center.x, center.y, iter_Rect->h / 3 - 3, targetColor);
 		}
 		iter_Label++;
@@ -344,8 +349,9 @@ void gui::CheckButton::Render(SDL_Renderer* renderer) {
 }
 
 gui::TreeView::TreeView(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, std::initializer_list<int> layers, uint8_t size, SDL_Color colorFG, SDL_Color labelColor, SDL_Color colorBG) {
-	int parent = LabelNode::NO_PARENT;
-	int objPCount = 0, prevDepth = 0, depthDiff = 0, depthIterCount = 0;
+	uint8_t currParentIndex = LabelNode::NO_PARENT;
+	int prevDepth = 0, depthDiff = 0, depthIterCount = 0;
+	
 	auto label_iter = labels.begin();
 	auto layer_iter = layers.begin();
 	LabelNode* currParent;
@@ -353,28 +359,27 @@ gui::TreeView::TreeView(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_
 		if (prevDepth != *layer_iter) {
 			depthDiff = std::abs(*layer_iter - prevDepth);
 			if (*layer_iter < prevDepth) {
-				while (depthIterCount < depthDiff && parent != LabelNode::NO_PARENT) {
-					parent = m_LabelNodes[parent].GetParent();
+				while (depthIterCount < depthDiff && currParentIndex != LabelNode::NO_PARENT) {
+					currParentIndex = m_LabelNodes[currParentIndex].GetParent();
 					depthIterCount++;
 				}
 				depthIterCount = 0;
 			}
 			else if (*layer_iter > prevDepth) {
-				parent = m_LabelNodes.GetSize() - 1;
+				currParentIndex = m_LabelNodes.GetSize() - 1;
 			}
 		}
 		prevDepth = *layer_iter;
-		m_LabelNodes.Append(LabelNode(parent, renderer, rect, *label_iter, size, labelColor, colorBG));
+		m_LabelNodes.Append(LabelNode(currParentIndex, renderer, rect, *label_iter, size, labelColor, colorBG));
 		LabelNode* curr = &m_LabelNodes[m_LabelNodes.GetSize() - 1];
-		if (parent != LabelNode::NO_PARENT) {
-			currParent = &m_LabelNodes[parent];
+		if (currParentIndex != LabelNode::NO_PARENT) {
+			currParent = &m_LabelNodes[currParentIndex];
 			currParent->IncChild();
-			currParent->SetState(LabelNode::HAS_CHILD_EXPANDED);
-			curr->UpdatePosition({ (*layer_iter + 1) * curr->GetRect().h, currParent->GetChildCount() * curr->GetRect().h });
+			currParent->SetChildState(NodeState::HAS_CHILD_EXPANDED);
+			curr->UpdatePosition({ (*layer_iter + 1) * curr->GetRect().h, 0 });
 		}
 		else {
-			curr->UpdatePosition({ (*layer_iter + 1) * curr->GetRect().h, objPCount * curr->GetRect().h });
-			objPCount++;
+			curr->UpdatePosition({ (*layer_iter + 1) * curr->GetRect().h, 0 });
 		}
 		label_iter++;
 		layer_iter++;
@@ -399,10 +404,84 @@ gui::TreeView& gui::TreeView::operator=(TreeView&& other) noexcept {
 	return *this;
 }
 
+void gui::TreeView::ToggleNode(size_t index) {
+	LabelNode* node = &m_LabelNodes[index];
+	if (node->GetChildState() == NodeState::HAS_CHILD_EXPANDED) {
+		node->SetChildState(NodeState::CHILD_COLLAPSING);
+		node->SetChildSetCounter();
+	}
+	else if (node->GetChildState() == NodeState::HAS_CHILD_COLLAPSED) {
+		node->SetChildState(NodeState::CHILD_EXPANDING);
+		node->SetChildSetCounter();
+	}
+	UpdateStates();
+}
+
+void gui::TreeView::UpdateStates() {
+	for (auto it_Node = m_LabelNodes.Begin(); it_Node < it_Node.end_ptr; it_Node++) {
+		if (it_Node->GetParent() != LabelNode::NO_PARENT) {
+			LabelNode* parent = &m_LabelNodes[it_Node->GetParent()];
+			if (parent->GetChildState() == NodeState::CHILD_EXPANDING) {
+				it_Node->SetState(NodeState::IS_EXPANDED);
+				parent->DecSetChild();
+				if (it_Node->GetChildState() != NodeState::NO_CHILD) {
+					it_Node->SetChildState(NodeState::CHILD_EXPANDING);
+					it_Node->SetChildSetCounter();
+				}
+				if (parent->GetChildSetCounter() == 0) {
+					parent->SetChildState(NodeState::HAS_CHILD_EXPANDED);
+				}
+			}
+			else if (parent->GetChildState() == NodeState::CHILD_COLLAPSING) {
+				it_Node->SetState(NodeState::IS_COLLAPSED);
+				parent->DecSetChild();
+				if (it_Node->GetChildState() != NodeState::NO_CHILD) {
+					it_Node->SetChildState(NodeState::CHILD_COLLAPSING);
+					it_Node->SetChildSetCounter();
+				}
+				if (parent->GetChildSetCounter() == 0) {
+					parent->SetChildState(NodeState::HAS_CHILD_COLLAPSED);
+				}
+			}
+		}
+	}
+}
 
 void gui::TreeView::Render(SDL_Renderer* renderer) {
-	for (auto label_it = m_LabelNodes.Begin(); label_it < label_it.end_ptr; label_it++) {
-		label_it->Render(renderer);
+	int verticalOffset = 0;
+	auto it_Node = m_LabelNodes.Begin();
+	int h = it_Node->GetRect().h;
+	for (; it_Node < it_Node.end_ptr; it_Node++) {
+		if (it_Node->GetState() == NodeState::IS_EXPANDED) {
+			SDL_Rect nodeRect = it_Node->GetRect();
+			it_Node->Render(renderer, { (int)(it_Node->GetSize() * 1.5), verticalOffset});
+			SDL_Color targetColor = it_Node->GetColorFG();
+			if (it_Node.GetIndex() == m_IsHovered) {
+				targetColor.r += 35 * (255 - targetColor.r > 34);
+				targetColor.g += 35 * (255 - targetColor.g > 34);
+				targetColor.b += 35 * (255 - targetColor.b > 34);
+			}
+			if (it_Node->GetChildState() == NodeState::HAS_CHILD_COLLAPSED) {
+				SDL_Point points[4];
+				points[0] = { nodeRect.x, nodeRect.y + verticalOffset };
+				points[1] = { nodeRect.x + (int)(h * 0.7072f) , nodeRect.y + verticalOffset + (int)(h * 0.5) };
+				points[2] = { nodeRect.x, nodeRect.y + verticalOffset + h };
+				points[3] = points[0];
+				SDL_SetRenderDrawColor(renderer, targetColor.r, targetColor.g, targetColor.b, targetColor.a);
+				SDL_RenderDrawLines(renderer, points, 4);
+			}
+			else if (it_Node->GetChildState() == NodeState::HAS_CHILD_EXPANDED) {
+				SDL_Vertex vertices[3];
+				vertices[0].position = { (float)(nodeRect.x), (float)(nodeRect.y + h + verticalOffset) };
+				vertices[0].color = targetColor;
+				vertices[1].position = { (float)(nodeRect.x + 0.7072f * h), (float)(nodeRect.y + h + verticalOffset) };
+				vertices[1].color = targetColor;
+				vertices[2].position = { (float)(nodeRect.x + 0.7072f * h), (float)(nodeRect.y + 0.2928 * h + verticalOffset) };
+				vertices[2].color = targetColor;
+				SDL_RenderGeometry(renderer, NULL, vertices, 3, NULL, 0);
+			}
+			verticalOffset += h;
+		}
 	}
 }
 
@@ -422,31 +501,53 @@ void gui::Layer::AddCheckButton(SDL_Renderer* renderer, SDL_Rect rect, const cha
 	m_CheckButtons.EmplaceBack(renderer, rect, text, size, colorFG, labelColor, m_ColorBG);
 }
 
+void gui::Layer::AddTreeView(SDL_Renderer* renderer, SDL_Rect rect, std::initializer_list<const char*> labels, std::initializer_list<int> layers, uint8_t size, SDL_Color colorFG, SDL_Color labelColor, SDL_Color colorBG) {
+	m_TreeViews.EmplaceBack(renderer, rect, labels, layers, size, colorFG, labelColor, colorBG);
+}
+
 void gui::Layer::Render(SDL_Renderer* renderer) {
 	SDL_Texture* mainTarget = SDL_GetRenderTarget(renderer);
 	SDL_SetRenderTarget(renderer, m_LayerTexture);
 	SDL_SetRenderDrawColor(renderer, m_ColorBG.r, m_ColorBG.g, m_ColorBG.b, m_ColorBG.a);
 	SDL_RenderClear(renderer);
-	for (auto it_Button = this->GetButtonIterator(); it_Button < it_Button.end_ptr; it_Button++) {
+	for (auto it_Button = GetButtonIterator(); it_Button < it_Button.end_ptr; it_Button++) {
 		it_Button->GetHovered() = s_CollideWith(GUIEvent::GetMouseCurrentPos(), it_Button->GetRect(), { m_Rect.x, m_Rect.y });
 		it_Button->Render(renderer);
 	}
-	for (auto it_Slider = this->GetSliderIterator(); it_Slider < it_Slider.end_ptr; it_Slider++) {
+	for (auto it_Slider = GetSliderIterator(); it_Slider < it_Slider.end_ptr; it_Slider++) {
 		it_Slider->Render(renderer);
 	}
-	for (auto it_CheckButton = this->GetCheckButtonIterator(); it_CheckButton < it_CheckButton.end_ptr; it_CheckButton++) {
+	for (auto it_CheckButton = GetCheckButtonIterator(); it_CheckButton < it_CheckButton.end_ptr; it_CheckButton++) {
 		it_CheckButton->GetHovered() = s_CollideWith(GUIEvent::GetMouseCurrentPos(), it_CheckButton->GetRect(), { m_Rect.x, m_Rect.y });
 		it_CheckButton->Render(renderer);
 	}
-	for (auto it_RadioButton = this->GetRadioButtonIterator(); it_RadioButton < it_RadioButton.end_ptr; it_RadioButton++) {
+	for (auto it_RadioButton = GetRadioButtonIterator(); it_RadioButton < it_RadioButton.end_ptr; it_RadioButton++) {
 		it_RadioButton->GetHovered() = -1;
 		for (auto it_RectRB = it_RadioButton->GetRectIterator(); it_RectRB < it_RectRB.end_ptr; it_RectRB++) {
 			if (s_CollideWith(GUIEvent::GetMouseCurrentPos(), *it_RectRB, { m_Rect.x, m_Rect.y })) {
-				it_RadioButton->GetHovered() = (int8_t)(it_RectRB.operator->() - it_RectRB.GetBegin());
+				it_RadioButton->GetHovered() = it_RectRB.GetIndex();
 				break;
 			}
 		}
 		it_RadioButton->Render(renderer);
+	}
+	int verticalOffset = 0;
+	for (auto it_TreeView = GetTreeViewIterator(); it_TreeView < it_TreeView.end_ptr; it_TreeView++) {
+		it_TreeView->GetHovered() = -1;
+		for (auto it_Node = it_TreeView->GetNodeIterator(); it_Node < it_Node.end_ptr; it_Node++) {
+			SDL_Rect rect = it_Node->GetRect();
+			rect.w = rect.h;
+			rect.y += verticalOffset;
+			if (it_Node->GetState() == NodeState::IS_COLLAPSED) {
+				continue;
+			}
+			if (s_CollideWith(GUIEvent::GetMouseCurrentPos(), rect, { m_Rect.x, m_Rect.y })) {
+				it_TreeView->GetHovered() = it_Node.GetIndex();
+				break;
+			}
+			verticalOffset += rect.h;
+		}
+		it_TreeView->Render(renderer);
 	}
 	SDL_SetRenderDrawColor(renderer, DefaultGUIColor.r, DefaultGUIColor.g, DefaultGUIColor.b, DefaultGUIColor.a);
 	SDL_RenderDrawLine(renderer, 0, 6, 0, m_Rect.h - 7);
@@ -497,10 +598,29 @@ void gui::HandleGUIEvents(GUIEvent* guiEvent, Layer* layer) {
 		for (auto it_RadioButton = layer->GetRadioButtonIterator(); it_RadioButton < it_RadioButton.end_ptr && !handled; it_RadioButton++) {
 			for (auto it_Rect = it_RadioButton->GetRectIterator(); it_Rect < it_Rect.end_ptr; it_Rect++) {
 				if (s_CollideWith(*guiEvent->GetMousePos(), *it_Rect, layer->GetPosition())) {
-					it_RadioButton->SetState((uint8_t)(it_Rect.operator->() - it_Rect.GetBegin()));
+					it_RadioButton->SetState(it_Rect.GetIndex());
 					*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
 					handled = true;
+					break;
 				}
+			}
+		}
+		for (auto it_TreeView = layer->GetTreeViewIterator(); it_TreeView < it_TreeView.end_ptr && !handled; it_TreeView++) {
+			int verticalOffset = 0;
+			for (auto it_Node = it_TreeView->GetNodeIterator(); it_Node < it_Node.end_ptr; it_Node++) {
+				SDL_Rect rect = it_Node->GetRect();
+				rect.w = rect.h;
+				rect.y += verticalOffset;
+				if (it_Node->GetState() == NodeState::IS_COLLAPSED) {
+					continue;
+				}
+				if (s_CollideWith(*guiEvent->GetMousePos(), rect, layer->GetPosition())) {
+					it_TreeView->ToggleNode(it_Node.GetIndex());
+					*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+					handled = true;
+					break;
+				}
+				verticalOffset += rect.h;
 			}
 		}
 	}

@@ -138,6 +138,10 @@ namespace container {
 			return begin_ptr;
 		}
 
+		size_t GetIndex() {
+			return (size_t)(obj_ptr - begin_ptr);
+		}
+
 		ListIterator& operator++() {
 			obj_ptr++;
 			size_t index = (size_t)(obj_ptr - begin_ptr);
@@ -430,7 +434,7 @@ namespace container {
 		}
 
 		void Remove(Iterator item) {
-			size_t index = (size_t)(item.operator->() - item.GetBegin());
+			size_t index = item.GetIndex();
 			if constexpr (std::is_pointer_v<T_obj>) {
 				delete m_Objects[index];
 				m_Objects[index] = nullptr;
