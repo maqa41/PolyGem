@@ -11,19 +11,8 @@ namespace plg {
 		Edge(size_t start, size_t end) : m_Start(start), m_End(end) { }
 		Edge(const Edge& other) : m_Start(other.m_Start), m_End(other.m_End) { }
 		Edge(Edge&& other) noexcept : m_Start(other.m_Start), m_End(other.m_End) { }
-		Edge& operator=(const Edge& other) {
-			if (this != &other) {
-				m_Start = other.m_Start;
-				m_End = other.m_End;
-			}
-			return *this;
-		}
-		Edge& operator=(Edge&& other) noexcept {
-			if (this != &other) {
-				m_Start = other.m_Start;
-				m_End = other.m_End;
-			}
-		}
+		Edge& operator=(const Edge& other);
+		Edge& operator=(Edge&& other) noexcept;
 		~Edge() { }
 
 		Vertex& GetStart(container::List<Vertex>* vertexMesh) { return vertexMesh->operator[](m_Start); }
@@ -86,9 +75,9 @@ namespace plg {
 		void MoveFace(Face face, Vec2 offset);
 		Vec2 GetEdgeCenter(Edge edge);
 		Vec2 GetFaceCenter(Face face);
-		void AddVertex(Vertex object);
-		void AddEdge(Edge object);
-		void AddFace(Face object);
+		int32_t AddVertex(Vertex object);
+		int32_t AddEdge(Edge object);
+		int32_t AddFace(Face object);
 		void Render(SDL_Renderer* renderer, Vec2 offset);
 		
 	private:
@@ -101,7 +90,7 @@ namespace plg {
 	public:
 		SceneMeshData() { }
 
-		static const int32_t NULLMESH = -1;
+		static const int32_t NULL_MESH = -1;
 		bool SetMesh(container::List<Mesh>* meshList, Vec2 mousePos);
 		bool SetVertex(Mesh* mesh, Vec2 mousePos);
 		bool SetEdge(Mesh* mesh, Vec2 mousePos);
@@ -111,20 +100,24 @@ namespace plg {
 		MeshMode GetMode() { return m_Mode; }
 		int GetMeshID() { return m_SelectedMeshID; }
 		bool IsCleared() { return m_Cleared; }
-		container::ListIterator<container::List<int>> GetVertexIter() { return m_SelectedVertices.Begin(); }
-		container::ListIterator<container::List<int>> GetEdgeIter() { return m_SelectedEdges.Begin(); }
-		container::ListIterator<container::List<int>> GetFaceIter() { return m_SelectedFaces.Begin(); }
+		size_t GetVertexCount() { return m_SelectedVertices.GetSize(); }
+		size_t GetEdgeCount() { return m_SelectedEdges.GetSize(); }
+		size_t GetFaceCount() { return m_SelectedFaces.GetSize(); }
+
+		container::ListIterator<container::List<int32_t>> GetVertexIter() { return m_SelectedVertices.Begin(); }
+		container::ListIterator<container::List<int32_t>> GetEdgeIter() { return m_SelectedEdges.Begin(); }
+		container::ListIterator<container::List<int32_t>> GetFaceIter() { return m_SelectedFaces.Begin(); }
 
 	private:
 		SceneMeshData(const SceneMeshData&) { }
 		SceneMeshData& operator=(const SceneMeshData&) { }
 
 		MeshMode m_Mode = MeshMode::PLG_VERTEX;
-		int m_SelectedMeshID = 0;
+		int32_t m_SelectedMeshID = 0;
 		bool m_Cleared = false;
-		container::List<int> m_SelectedVertices = container::List<int>(4);
-		container::List<int> m_SelectedEdges = container::List<int>(4);
-		container::List<int> m_SelectedFaces = container::List<int>(4);
+		container::List<int32_t> m_SelectedVertices = container::List<int32_t>(4);
+		container::List<int32_t> m_SelectedEdges = container::List<int32_t>(4);
+		container::List<int32_t> m_SelectedFaces = container::List<int32_t>(4);
 	};
 
 	extern SceneMeshData sceneMeshData;

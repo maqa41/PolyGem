@@ -70,7 +70,7 @@ static bool s_CollideEdge(plg::Edge edge, container::List<plg::Vertex>* vertices
 	plg::Vec2 vertE = edge.GetEnd(vertices);
 	plg::Vec2 p1 = vertS - mousePos;
 	plg::Vec2 p2 = vertE - vertS;
-	bool p2l = std::powf(p2.x * p1.y - p1.x * p2.y, 2) < 25 * p2.SquareMagnitude(); // check for distance from point to line
+	bool p2l = std::pow(p2.x * p1.y - p1.x * p2.y, 2) < 25 * p2.SquareMagnitude(); // check for distance from point to line
 	bool p2v = std::abs(vertE.GetDistancetoSquared(mousePos) - vertS.GetDistancetoSquared(mousePos)) < vertE.GetDistancetoSquared(vertS); //check distance from point to vertices
 	return p2l && p2v;
 }
@@ -98,29 +98,29 @@ float plg::Vec2::NormalReturnMag() {
 }
 
 plg::Vec2 plg::Vec2::Rotate(float angle) {
-	float rx = std::cosf(angle);
-	float ry = std::sinf(angle);
+	float rx = std::cos(angle);
+	float ry = std::sin(angle);
 	return Vec2((x * rx - y * ry), (x * ry + y * rx));
 }
 
 plg::Vec2 plg::Vec2::Rotate(float angle, const Vec2& centroid) {
-	float rx = std::cosf(angle);
-	float ry = std::sinf(angle);
+	float rx = std::cos(angle);
+	float ry = std::sin(angle);
 	float dx = x - centroid.x;
 	float dy = y - centroid.y;
 	return Vec2(x + (dx * rx - dy * ry), y + (dx * ry + dy * rx));
 }
 
 void plg::Vec2::RotateIP(float angle) {
-	float rx = std::cosf(angle);
-	float ry = std::sinf(angle);
+	float rx = std::cos(angle);
+	float ry = std::sin(angle);
 	x = x * rx - y * ry;
 	y = x * ry + y * rx;
 }
 
 void plg::Vec2::RotateIP(float angle, const Vec2& centroid) {
-	float rx = std::cosf(angle);
-	float ry = std::sinf(angle);
+	float rx = std::cos(angle);
+	float ry = std::sin(angle);
 	float dx = x - centroid.x;
 	float dy = y - centroid.y;
 	x += dx * rx - dy * ry - dx;
@@ -152,6 +152,22 @@ void plg::Vec2::ConjugateWith(Vec2& vec) {
 	y = vec.y;
 	vec.x = tempX;
 	vec.y = tempY;
+}
+
+plg::Edge& plg::Edge::operator=(const Edge& other) {
+	if (this != &other) {
+		m_Start = other.m_Start;
+		m_End = other.m_End;
+	}
+	return *this;
+}
+
+plg::Edge& plg::Edge::operator=(Edge&& other) noexcept {
+	if (this != &other) {
+		m_Start = other.m_Start;
+		m_End = other.m_End;
+	}
+	return *this;
 }
 
 plg::Mesh::Mesh(std::initializer_list<plg::Vertex> vertices) : m_Vertices(vertices), m_Edges(vertices.size()) {
@@ -248,20 +264,20 @@ plg::Mesh& plg::Mesh::operator=(Mesh&& other) noexcept {
 	return *this;
 }
 
-void plg::Mesh::AddVertex(plg::Vertex object) {
-	m_Vertices.Append(object);
+int32_t plg::Mesh::AddVertex(plg::Vertex object) {
+	return m_Vertices.Append(object);
 }
 
-void plg::Mesh::AddEdge(plg::Edge object) {
-
+int32_t plg::Mesh::AddEdge(plg::Edge object) {
+	return m_Edges.Append(object);
 }
 
-void plg::Mesh::AddFace(plg::Face object) {
-
+int32_t plg::Mesh::AddFace(plg::Face object) {
+	return 0;
 }
 
 void plg::Mesh::RotateEdge(Edge edge, float angle) {
-	Vec2 normal(std::cosf(angle), std::sinf(angle));
+	Vec2 normal(std::cos(angle), std::sin(angle));
 	m_Vertices[edge.m_End].RotateByVecIP(normal, m_Vertices[edge.m_Start]);
 }
 
@@ -271,7 +287,7 @@ void plg::Mesh::RotateEdge(Edge edge, Vec2 normal) {
 
 void plg::Mesh::RotateByCenterEdge(Edge edge, float angle) {
 	Vec2 center((m_Vertices[edge.m_Start] + m_Vertices[edge.m_End]) / 2);
-	Vec2 normal(std::cosf(angle), std::sinf(angle));
+	Vec2 normal(std::cos(angle), std::sin(angle));
 	m_Vertices[edge.m_Start].RotateByVecIP(normal, center);
 	m_Vertices[edge.m_End].RotateByVecIP(normal, center);
 }
@@ -283,7 +299,7 @@ void plg::Mesh::RotateByCenterEdge(Edge edge, Vec2 normal) {
 }
 
 void plg::Mesh::RotateByCentroidEdge(Edge edge, float angle, Vec2 centroid) {
-	Vec2 normal(std::cosf(angle), std::sinf(angle));
+	Vec2 normal(std::cos(angle), std::sin(angle));
 	m_Vertices[edge.m_Start].RotateByVecIP(normal, centroid);
 	m_Vertices[edge.m_End].RotateByVecIP(normal, centroid);
 }

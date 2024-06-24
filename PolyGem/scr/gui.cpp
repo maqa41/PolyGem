@@ -579,19 +579,19 @@ void gui::Frame::Render(SDL_Renderer* renderer) {
 void gui::HandleGUIEvents(GUIEvent* guiEvent, Layer* layer) {
 	if (!s_CollideWith(*guiEvent->GetMousePos(), layer->GetRect()))
 		return;
-	if (*guiEvent->getMousePressed(SDL_BUTTON_LEFT)) {
+	if (*guiEvent->GetMousePressed(SDL_BUTTON_LEFT)) {
 		bool handled = false;
 		for (auto it_Button = layer->GetButtonIterator(); it_Button < it_Button.end_ptr && !handled; it_Button++) {
 			if (s_CollideWith(*guiEvent->GetMousePos(), it_Button->GetRect(), layer->GetPosition())) {
 				it_Button->SetState();
-				*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+				*guiEvent->GetMousePressed(SDL_BUTTON_LEFT) = false;
 				handled = true;
 			}
 		}
 		for (auto it_ChekcButton = layer->GetCheckButtonIterator(); it_ChekcButton < it_ChekcButton.end_ptr && !handled; it_ChekcButton++) {
 			if (s_CollideWith(*guiEvent->GetMousePos(), it_ChekcButton->GetRect(), layer->GetPosition())) {
 				it_ChekcButton->SetState();
-				*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+				*guiEvent->GetMousePressed(SDL_BUTTON_LEFT) = false;
 				handled = true;
 			}
 		}
@@ -599,7 +599,7 @@ void gui::HandleGUIEvents(GUIEvent* guiEvent, Layer* layer) {
 			for (auto it_Rect = it_RadioButton->GetRectIterator(); it_Rect < it_Rect.end_ptr; it_Rect++) {
 				if (s_CollideWith(*guiEvent->GetMousePos(), *it_Rect, layer->GetPosition())) {
 					it_RadioButton->SetState(it_Rect.GetIndex());
-					*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+					*guiEvent->GetMousePressed(SDL_BUTTON_LEFT) = false;
 					handled = true;
 					break;
 				}
@@ -616,7 +616,7 @@ void gui::HandleGUIEvents(GUIEvent* guiEvent, Layer* layer) {
 				}
 				if (s_CollideWith(*guiEvent->GetMousePos(), rect, layer->GetPosition())) {
 					it_TreeView->ToggleNode(it_Node.GetIndex());
-					*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+					*guiEvent->GetMousePressed(SDL_BUTTON_LEFT) = false;
 					handled = true;
 					break;
 				}
@@ -637,7 +637,7 @@ void gui::HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw
 	container::List<plg::Mesh>* scene = (container::List<plg::Mesh>*)sceneMeshRaw;
 	std::unordered_set<int> indexSet;
 	int meshID = plg::sceneMeshData.GetMeshID();
-	if (guiEvent->GetKeyState(SDL_SCANCODE_SPACE) && meshID != plg::sceneMeshData.NULLMESH && !plg::sceneMeshData.IsCleared()) {
+	if (guiEvent->GetKeyState(SDL_SCANCODE_SPACE) && meshID != plg::sceneMeshData.NULL_MESH && !plg::sceneMeshData.IsCleared()) {
 		Vector2D mousePos = guiEvent->GetMouseCurrentPos();
 		plg::Vec2 offset(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y);
   		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX) {
@@ -672,13 +672,14 @@ void gui::HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw
 			scene->operator[](meshID).GetVertexList()->operator[](*index).AddVec(offset);
 		}
 	}
-	if (!s_CollideWith(*guiEvent->GetMousePos(), frame->GetRect()))
+	if (!s_CollideWith(*guiEvent->GetMousePos(), frame->GetRect())) {
 		return;
-	if (*guiEvent->getMousePressed(SDL_BUTTON_LEFT)) {
+	}
+	Vector2D mousePos = *guiEvent->GetMousePos();
+	if (*guiEvent->GetMousePressed(SDL_BUTTON_LEFT)) {
 		if (!(guiEvent->GetKeyState(SDL_SCANCODE_LSHIFT) || guiEvent->GetKeyState(SDL_SCANCODE_RSHIFT))) {
 			plg::sceneMeshData.Clear();
 		}
-		Vector2D mousePos = *guiEvent->GetMousePos();
 		bool state = false;
 		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX) {
 			state = plg::sceneMeshData.SetVertex(&(scene->operator[](meshID)), plg::Vec2(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y));
@@ -692,7 +693,33 @@ void gui::HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw
 		if (!state && !(guiEvent->GetKeyState(SDL_SCANCODE_LSHIFT) || guiEvent->GetKeyState(SDL_SCANCODE_RSHIFT))) {
 			plg::sceneMeshData.Clear();
 		}
-		*guiEvent->getMousePressed(SDL_BUTTON_LEFT) = false;
+		*guiEvent->GetMousePressed(SDL_BUTTON_LEFT) = false;
+	}
+	if (*guiEvent->GetMousePressed(SDL_BUTTON_RIGHT) && (guiEvent->GetKeyState(SDL_SCANCODE_LCTRL) || guiEvent->GetKeyState(SDL_SCANCODE_LCTRL))) {
+		Vector2D mousePos = *guiEvent->GetMousePos();
+		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX) {
+			int32_t vertexID = scene->operator[](meshID).AddVertex(plg::Vertex(mousePos.x - frame->GetRect().x, mousePos.y - frame->GetRect().y));
+			if (plg::sceneMeshData.GetVertexCount() > 0 && (guiEvent->GetKeyState(SDL_SCANCODE_LSHIFT) || guiEvent->GetKeyState(SDL_SCANCODE_LSHIFT))) {
+				for (auto vertex_it = plg::sceneMeshData.GetVertexIter(); vertex_it < vertex_it.end_ptr; vertex_it++) {
+					scene->operator[](meshID).AddEdge(plg::Edge(vertexID, *vertex_it));
+				}
+			}
+		}
+		*guiEvent->GetMousePressed(SDL_BUTTON_RIGHT) = false;
+	}
+	if ((guiEvent->GetKeyState(SDL_SCANCODE_LCTRL) || guiEvent->GetKeyState(SDL_SCANCODE_LCTRL)) && guiEvent->GetKeyState(SDL_SCANCODE_J)) {
+		if (plg::sceneMeshData.GetMode() == plg::MeshMode::PLG_VERTEX && plg::sceneMeshData.GetVertexCount() > 1) {
+			auto vertex_it = plg::sceneMeshData.GetVertexIter();
+			int32_t prevVertexID = *vertex_it;
+			for (; vertex_it < vertex_it.end_ptr; vertex_it++) {
+				scene->operator[](meshID).AddEdge(plg::Edge(prevVertexID, *vertex_it));
+				prevVertexID = *vertex_it;
+			}
+		}
+		guiEvent->SetKeyState(SDL_SCANCODE_J, false);
+	}
+	if (guiEvent->GetKeyState(SDL_SCANCODE_DELETE) && plg::sceneMeshData.GetVertexCount()) {
+
 	}
 }
 
@@ -712,14 +739,18 @@ void gui::RetriveGUIEvents(GUIEvent* guiEvent) {
 		case SDL_MOUSEBUTTONDOWN:
 			guiEvent->SetMouseState(event.button.button, true);
 			SDL_GetMouseState(&guiEvent->GetMousePos()->x, &guiEvent->GetMousePos()->y);
-			*guiEvent->getMousePressed(event.button.button) = true;
+			*guiEvent->GetMousePressed(event.button.button) = true;
 			break;
 		case SDL_MOUSEBUTTONUP:
 			guiEvent->SetMouseState(event.button.button, false);
-			*guiEvent->getMousePressed(event.button.button) = false;
+			*guiEvent->GetMousePressed(event.button.button) = false;
 			break;
 		default:
 			break;
 		}
 	}
+}
+
+void gui::RenderPressedKeys(SDL_Renderer* renderer, GUIEvent* guiEvent){
+
 }

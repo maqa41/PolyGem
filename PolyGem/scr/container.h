@@ -1,6 +1,7 @@
 #pragma once
 #include "benchmark.h"
 #include <bit>
+#include <cstring>
 
 namespace container {
 	static uint64_t universalOne = 1;
@@ -388,32 +389,35 @@ namespace container {
 			throw std::exception();
 		}
 
-		void Append(T_obj& object) {
+		size_t Append(T_obj& object) {
 			if (m_ObjectCount == m_Capacity && m_ObjectCount != 0) {
 				ReallocateMemory();
 			}
 			size_t trueEmptySlotIndex = GetEmptySlotIndex();
 			new(&m_Objects[trueEmptySlotIndex]) T_obj(object);
 			m_ObjectCount += 1;
+			return trueEmptySlotIndex;
 		}
 
-		void Append(T_obj&& object) {
+		size_t Append(T_obj&& object) {
 			if (m_ObjectCount == m_Capacity && m_ObjectCount != 0) {
 				ReallocateMemory();
 			}
 			size_t trueEmptySlotIndex = GetEmptySlotIndex();
 			new(&m_Objects[trueEmptySlotIndex]) T_obj(std::move(object));
 			m_ObjectCount += 1;
+			return trueEmptySlotIndex;
 		}
 
 		template<typename...Args>
-		void EmplaceBack(Args&&... args) {
+		size_t EmplaceBack(Args&&... args) {
 			if (m_ObjectCount == m_Capacity && m_ObjectCount != 0) {
 				ReallocateMemory();
 			}
 			size_t trueEmptySlotIndex = GetEmptySlotIndex();
 			new(&m_Objects[trueEmptySlotIndex]) T_obj(std::forward<Args>(args)...);
 			m_ObjectCount += 1;
+			return trueEmptySlotIndex;
 		}
 
 		void Remove(const size_t index) {
@@ -445,6 +449,12 @@ namespace container {
 			SetEmptySlotIndex(index);
 			m_ObjectCount -= 1;
 			return;
+		}
+
+		bool IsEmptySlot(size_t index) const {
+			size_t emptySlotBlock = index >> 6;
+			size_t emptySlotIndex = index & 0x3F;
+			return (m_EmptySlots[emptySlotBlock] & (universalOne << emptySlotIndex)) == 0;
 		}
 
 		size_t GetEmptySlot() {

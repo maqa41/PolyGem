@@ -3,6 +3,7 @@
 #include "benchmark.h"
 #include "container.h"
 #include <memory>
+#include <math.h>
 
 namespace plg {
 	class Vec2 {

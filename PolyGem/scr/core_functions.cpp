@@ -60,7 +60,7 @@ SDL_Surface* SDL_CreateSurfaceFromTexture(SDL_Renderer* renderer, SDL_Texture* t
 SDL_Surface* blurSurface(SDL_Surface* surface, uint8_t kernel) {
 	int halfKernel = kernel / 2;
 	int _halfKernel = halfKernel + 1;
-	float invKernel = 1.0f / std::powf((float)kernel, 2);
+	float invKernel = 1.0f / std::pow((float)kernel, 2);
 	SDL_Surface* blurredSurface = SDL_CreateRGBSurface(0, surface->w, surface->h, 32, 0, 0, 0, 0);
 	for (int y = 0; y < surface->h; y++) {
 		for (int x = 0; x < surface->w; x++) {
@@ -94,7 +94,7 @@ SDL_Surface* blurSurfaceMagic(SDL_Surface* surface, uint8_t kernel, uint8_t powe
 	float sumKernel = 0.0f;
 	for (int dy = -halfKernel; dy < _halfKernel; dy++)
 		for (int dx = -halfKernel; dx < _halfKernel; dx++)
-			sumKernel += std::powf(kernel - std::abs(dx) - std::abs(dy), power);
+			sumKernel += std::pow(kernel - std::abs(dx) - std::abs(dy), power);
 	float invKernel = 1.0f / sumKernel;
 
 	SDL_Surface* blurredSurface = SDL_CreateRGBSurface(0, surface->w, surface->h, 32, 0, 0, 0, 0);
@@ -108,7 +108,7 @@ SDL_Surface* blurSurfaceMagic(SDL_Surface* surface, uint8_t kernel, uint8_t powe
 					if (posX < 0 || posX > surface->w || posY < 0 || posY > surface->h)
 						continue;
 					SDL_Color prevColor = s_GetPixelColor(surface, posX, posY);
-					float magicVal = std::powf(kernel - std::abs(dx) - std::abs(dy), power);
+					float magicVal = std::pow(kernel - std::abs(dx) - std::abs(dy), power);
 					r += prevColor.r * magicVal;
 					g += prevColor.g * magicVal;
 					b += prevColor.b * magicVal;

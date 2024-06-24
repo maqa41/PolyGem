@@ -62,7 +62,7 @@ int main() {
 	
 	gui::InitializeGUIStatics(renderer);
 	gui::Layer testLayer(renderer, { 10, 10, 800, 600 }, gui::DefaultColorBG);
-	gui::Frame testFrame(renderer, { 850, 50, 360, 360 });
+	gui::Frame testFrame(renderer, { 850, 50, 500, 500 });
 	testLayer.AddRadioButton(renderer, { 10, 10, 0, 0 }, { "Vertex Mode", "Edge Mode", "Face Mode"}, 20, gui::DefaultPrimaryButtonColor);
 	gui::RadioButton* edgeButton = testLayer.GetRadioButtonIterator().operator->();
 	container::List<plg::Mesh> sceneMesh;

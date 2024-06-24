@@ -61,7 +61,7 @@ namespace gui {
 		bool GetKeyState(size_t key) { return m_KeyState[key]; }
 		void SetMouseState(size_t button, bool state) { m_MouseState[button] = state; }
 		bool GetMouseState(size_t button) { return m_MouseState[button]; }
-		bool* getMousePressed(size_t button) { return &m_MousePressed[button]; }
+		bool* GetMousePressed(size_t button) { return &m_MousePressed[button]; }
 		Vector2D* GetMousePos() { return &m_MousePos; }
 		static Vector2D GetMouseCurrentPos() {
 			Vector2D mouseMotionPos;
@@ -360,4 +360,5 @@ namespace gui {
 	void HandleGUIEvents(GUIEvent* guiEvent, Layer* layer);
 	void HandleSceneEvents(GUIEvent* guiEvent, Frame* frame, void* sceneMeshRaw);
 	void RetriveGUIEvents(GUIEvent* guiEvent);
+	void RenderPressedKeys(SDL_Renderer* renderer, GUIEvent* guiEvent);
 }

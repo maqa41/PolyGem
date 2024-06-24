@@ -12,6 +12,7 @@
 - Implement "AddFace()"
 
 =========== Future Features ===========
+- Implement warning logs
 - Implement box selection feature to allow multiple vertices, edges, faces to be selected
 - Implement "Mesh" selection
 - Implement "Mesh" merge
